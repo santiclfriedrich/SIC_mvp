@@ -4,8 +4,8 @@ import Image from "next/image";
 
 export const ProductCard = ({ product, onClick }) => {
 
-  const stock = product.stockTotal ?? product.stock ?? 0;
-  const best = product.bestPrice || product.providers?.[0] || product;
+const best = product.bestPrice || product.providers?.[0] || product;
+const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? product.stock) || 0;
 
   const provider = best.provider ?? product.provider ?? "Proveedor";
   const price = Number(best.price ?? product.price) || 0;
