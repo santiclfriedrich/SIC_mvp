@@ -7,6 +7,10 @@ const nextConfig = {
       { protocol: "https", hostname: "www.gruponucleo.app" },
       { protocol: "https", hostname: "corcisa.com.ar" },
       { protocol: "https", hostname: "via.placeholder.com" },
+      {
+        protocol: "https",
+        hostname: "pcarts.com",
+      },
     ],
   },
 };
