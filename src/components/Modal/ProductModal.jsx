@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 
-import Image from "next/image";
+import SmartImage from "../SmartImage/SmartImage";
 
 
 /**
@@ -109,7 +109,7 @@ export const ProductModal = ({ product, onClose }) => {
           {/* IMAGE */}
         <div className="bg-gray-50 rounded-xl p-6">
           <div className="relative w-full h-80 md:h-[420px]">
-            <Image
+            <SmartImage
               src={imageUrl}
               alt={product.name}
               fill

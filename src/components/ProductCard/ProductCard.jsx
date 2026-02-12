@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import SmartImage from "../SmartImage/SmartImage";
 
 export const ProductCard = ({ product, onClick }) => {
 
@@ -90,7 +90,7 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
 {/* 🖼 Imagen */}
 <div className="relative h-40 w-full bg-white rounded-t-2xl border-b">
   {product.image ? (
-    <Image
+    <SmartImage
       src={product.image}
       alt={product.name}
       fill

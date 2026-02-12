@@ -1,12 +1,7 @@
-// web/src/lib/services/masnetAPI.js
-
+// import { getMasnetCatalogCached } from "../cache/masnetCatalogCache";// web/src/lib/services/masnetAPI.js
 import axios from "axios";
+import { getMasnetCatalogCached } from "../cache/masnetCatalogCache"; // ✅ CSV+cache
 
-/**
- * Detecta si el query parece un SKU
- * - no espacios
- * - al menos un número
- */
 function isSku(query = "") {
   const q = String(query).trim();
   return q && !q.includes(" ") && /\d/.test(q);
@@ -15,7 +10,7 @@ function isSku(query = "") {
 function getCreds() {
   const MASNET_USER_ID = process.env.MASNET_USER_ID;
   const MASNET_TOKEN = process.env.MASNET_TOKEN;
-  const MASNET_URL = process.env.MASNET_URL;
+  const MASNET_URL = process.env.MASNET_URL; // ej: https://masnet.com.ar/api/v1/productos
 
   if (!MASNET_USER_ID || !MASNET_TOKEN || !MASNET_URL) {
     console.warn("❌ Masnet → Faltan MASNET_USER_ID, MASNET_TOKEN o MASNET_URL");
@@ -29,49 +24,174 @@ function getCreds() {
   };
 }
 
+function normalizeText(s) {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // sin acentos
+    .replace(/\s+/g, " ");
+}
+
+function matchAllWords(hay, query) {
+  const h = normalizeText(hay);
+  const terms = normalizeText(query).split(" ").filter(Boolean);
+  return terms.every((t) => h.includes(t));
+}
+
 /**
- * 🔵 Búsqueda en Masnet
- * - POST
- * - SKU → codigo_producto
- * - Nombre → nombre (mínimo 3 caracteres)
+ * 1 request a Masnet (JSON API)
+ * - BODY: credenciales
+ * - QUERYSTRING: limit/offset/codigo_producto/actualizacion
+ *
+ * ⚠️ OJO: en doc no figura "nombre", así que NO lo usamos para búsquedas por nombre.
  */
-export async function fetchProductsFromMasnet(query = "") {
+async function fetchMasnetOnce({ creds, paramsObj, timeout = 25000 }) {
+  const body = { user_id: creds.user_id, token: creds.token };
+
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(paramsObj || {})) {
+    if (v === undefined || v === null || v === "") continue;
+    params.set(k, String(v));
+  }
+
+  const url = `${creds.url}?${params.toString()}`;
+
+  const res = await axios.post(url, body, {
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    timeout,
+  });
+
+  const items = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+  const pag = res.data?.paginador || null;
+
+  return { items, pag, url, raw: res.data };
+}
+
+/**
+ * 🔵 Búsqueda en Masnet (POST)
+ * - SKU => ✅ NO SE TOCA (codigo_producto)
+ * - Nombre => ✅ CSV + cache (sin sesgo, 1 request por TTL)
+ */
+export async function fetchProductsFromMasnet(
+  query = "",
+  { limit = 100, offset = 0 } = {}
+) {
   const creds = getCreds();
   if (!creds) return [];
 
   const trimmed = String(query || "").trim();
+  if (!trimmed) return [];
 
-  // Body base
-  const body = {
-    user_id: creds.user_id,
-    token: creds.token,
-    limit: 100,
-    offset: 0,
-  };
+  // ----------------------------
+  // ✅ Caso SKU => 1 request (NO TOCAR)
+  // ----------------------------
+  if (isSku(trimmed)) {
+    const { items, url } = await fetchMasnetOnce({
+      creds,
+      paramsObj: { limit, offset, codigo_producto: trimmed },
+    });
+    console.log("🔵 [Masnet SKU] URL:", url, "→", items.length);
+    return items;
+  }
 
-  // Filtro por SKU o nombre
-  if (trimmed) {
-    if (isSku(trimmed)) {
-      body.codigo_producto = trimmed;
-    } else if (trimmed.length >= 3) {
-      body.nombre = trimmed;
+  // ----------------------------
+  // ✅ Caso Nombre => CSV + cache
+  // ----------------------------
+  if (trimmed.length < 3) return [];
+
+  let catalog = [];
+  try {
+    catalog = await getMasnetCatalogCached(); // 👈 trae/cacha CSV (no rate limit por paginado)
+  } catch (err) {
+    console.error("❌ [Masnet CSV cache] Error:", err?.message || err);
+    return [];
+  }
+
+  const filtered = catalog.filter((p) => {
+    // p viene normalizado desde masnetCatalogCache.js
+    const hay = `${p.nombre ?? ""} ${p.marca ?? ""} ${p.codigo_producto ?? ""} ${p.codigo_alfa ?? ""}`;
+    return matchAllWords(hay, trimmed);
+  });
+
+  console.log(
+    `🟠 [Masnet nombre CSV] "${trimmed}" → ${filtered.length} (catálogo ${catalog.length})`
+  );
+  return filtered;
+}
+
+/**
+ * 🔍 Búsqueda exacta por SKU (la tuya) — NO TOCAR
+ */
+function normUpper(s) {
+  return String(s ?? "").trim().toUpperCase();
+}
+
+export async function fetchProductBySkuFromMasnet(
+  sku,
+  { limit = 100, maxPages = 30, timeout = 25000 } = {}
+) {
+  const creds = getCreds();
+  if (!creds) return null;
+
+  const target = normUpper(sku);
+  if (!target) return null;
+
+  // 1) lookups directos (offset 0)
+  for (const key of ["codigo_producto", "codigo_alfa", "id"]) {
+    try {
+      const { items, url } = await fetchMasnetOnce({
+        creds,
+        paramsObj: { limit, offset: 0, [key]: String(sku).trim() },
+        timeout,
+      });
+
+      console.log(`🔎 [Masnet exact] ${key} →`, url, "items:", items.length);
+
+      const found = items.find((p) => {
+        return (
+          normUpper(p.codigo_producto) === target ||
+          normUpper(p.codigo_alfa) === target ||
+          normUpper(p.id) === target
+        );
+      });
+
+      if (found) return found;
+    } catch (err) {
+      console.error(`❌ Masnet exact (${key}):`, err.response?.data || err.message);
     }
   }
 
-  try {
-    console.log("🔵 [Masnet] POST →", { ...body, token: "***" });
+  // 2) fallback: scan catálogo paginado sin filtros (igual que tenías)
+  console.warn(
+    "⚠️ [Masnet exact] No apareció por filtros. Escaneando catálogo paginado..."
+  );
 
-    const res = await axios.post(creds.url, body, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 25000,
+  let offset = 0;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const { items } = await fetchMasnetOnce({
+      creds,
+      paramsObj: { limit, offset },
+      timeout,
     });
 
-    const results = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
-    console.log(`🔵 [Masnet] Resultados: ${results.length}`);
+    if (!items.length) break;
 
-    return results;
-  } catch (err) {
-    console.error("❌ Error Masnet:", err.response?.data || err.message);
-    return [];
+    const found = items.find((p) => {
+      return (
+        normUpper(p.codigo_producto) === target ||
+        normUpper(p.codigo_alfa) === target ||
+        normUpper(p.id) === target
+      );
+    });
+
+    if (found) return found;
+
+    if (items.length < limit) break;
+    offset += limit;
   }
+
+  console.warn("⚠️ [Masnet] SKU no encontrado:", target);
+  return null;
 }

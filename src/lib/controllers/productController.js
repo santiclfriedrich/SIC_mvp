@@ -6,7 +6,7 @@ import { cleanMergedProduct } from "@/lib/utils/cleanMergedProduct";
 
 // Services (los fetch a proveedores)
 import { fetchProductsFromElit, fetchProductBySkuFromElit } from "@/lib/services/elitAPI";
-import { fetchProductsFromMasnet } from "@/lib/services/masnetAPI";
+import { fetchProductsFromMasnet, fetchProductBySkuFromMasnet } from "@/lib/services/masnetAPI";
 import { fetchProductsFromCorcisa } from "@/lib/services/corcisaAPI";
 import { fetchProductsFromNucleo } from "@/lib/services/nucleoAPI";
 import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts } from "@/lib/services/pcartsAPI";
@@ -83,39 +83,54 @@ export async function getProductBySku({ sku = "" } = {}) {
   const skuTrim = String(sku || "").trim();
   if (!skuTrim) return [];
 
+  const SKU = skuTrim.toUpperCase(); // normalización simple y efectiva
+
   try {
     const [elit, masnet, corcisa, nucleo, pcarts] = await Promise.allSettled([
       fetchProductBySkuFromElit(skuTrim),
-      fetchProductsFromMasnet(skuTrim),
+      fetchProductBySkuFromMasnet(skuTrim),
       fetchProductsFromCorcisa(skuTrim),
       fetchProductsFromNucleo(skuTrim),
       fetchProductBySkuFromPcarts(skuTrim),
     ]);
 
     const elitData =
-      elit.status === "fulfilled" && elit.value ? formatElitProducts([elit.value]) : [];
+      elit.status === "fulfilled" && elit.value
+        ? formatElitProducts([elit.value])
+        : [];
 
     const masnetData =
-      masnet.status === "fulfilled"
-        ? formatMasnetProducts(masnet.value).filter((p) => String(p.sku) === skuTrim)
+      masnet.status === "fulfilled" && masnet.value
+        ? formatMasnetProducts([masnet.value])
         : [];
 
     const corcisaData =
       corcisa.status === "fulfilled"
-        ? formatCorcisaProducts(corcisa.value).filter((p) => String(p.sku) === skuTrim)
+        ? formatCorcisaProducts(corcisa.value).filter(
+            (p) => String(p.sku || "").trim().toUpperCase() === SKU
+          )
         : [];
 
     const nucleoData =
       nucleo.status === "fulfilled"
-        ? formatNucleoProducts(nucleo.value).filter((p) => String(p.sku) === skuTrim)
+        ? formatNucleoProducts(nucleo.value).filter(
+            (p) => String(p.sku || "").trim().toUpperCase() === SKU
+          )
         : [];
 
     const pcartsData =
-      pcarts.status === "fulfilled" && pcarts.value ? [formatPcartsSingle(pcarts.value)] : [];
+      pcarts.status === "fulfilled" && pcarts.value
+        ? [formatPcartsSingle(pcarts.value)]
+        : [];
 
-    const finalResults = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData)
-    .map(cleanMergedProduct);
-    
+    const finalResults = mergeResults(
+      elitData,
+      masnetData,
+      corcisaData,
+      nucleoData,
+      pcartsData
+    ).map(cleanMergedProduct);
+
     return finalResults;
   } catch (error) {
     console.error("❌ Error getProductBySku:", error);
