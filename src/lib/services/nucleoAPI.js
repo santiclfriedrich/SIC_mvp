@@ -10,6 +10,17 @@ let tokenCacheAt = 0;
 // Ajustá si el token dura más/menos. Si no estás seguro: 10 min es prudente.
 const TOKEN_TTL_MS = 10 * 60 * 1000;
 
+function stripWrappingQuotes(s) {
+  const t = String(s ?? "").trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t.slice(1, -1);
+  }
+  return t;
+}
+
 function getCreds() {
   const NUCLEO_ID = process.env.NUCLEO_ID;
   const NUCLEO_USER = process.env.NUCLEO_USER;
@@ -21,9 +32,9 @@ function getCreds() {
   }
 
   return {
-    id: Number(NUCLEO_ID),
+    id: Number(String(NUCLEO_ID).trim()),
     username: String(NUCLEO_USER).trim(),
-    password: String(NUCLEO_PASSWORD).trim(),
+    password: stripWrappingQuotes(NUCLEO_PASSWORD), // 👈 clave
   };
 }
 
@@ -35,25 +46,39 @@ async function loginNucleo() {
   if (!creds) return null;
 
   const now = Date.now();
-  if (tokenCache && now - tokenCacheAt < TOKEN_TTL_MS) {
-    return tokenCache;
-  }
+  if (tokenCache && now - tokenCacheAt < TOKEN_TTL_MS) return tokenCache;
 
   try {
+    // (debug útil sin exponer password)
+    console.log("🔵 [Núcleo] Login payload:", {
+      id: creds.id,
+      username: creds.username,
+      passwordLen: creds.password.length,
+    });
+
     const res = await axios.post(LOGIN_URL, creds, {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Accept: "*/*" },
       timeout: 25000,
     });
 
-    // Tu API devuelve el token directo en res.data
-    const token = res.data;
-    if (!token) return null;
+    // ✅ según doc
+    const token = res.data?.access_token || res.data?.token || res.data;
+
+    // token debería ser string JWT
+    if (typeof token !== "string" || token.length < 20) {
+      console.error("❌ Núcleo login: token inválido:", res.data);
+      return null;
+    }
 
     tokenCache = token;
     tokenCacheAt = now;
     return token;
   } catch (err) {
-    console.error("❌ Núcleo login error:", err.response?.data || err.message);
+    console.error(
+      "❌ Núcleo login error:",
+      err.response?.status,
+      err.response?.data || err.message
+    );
     tokenCache = null;
     tokenCacheAt = 0;
     return null;
