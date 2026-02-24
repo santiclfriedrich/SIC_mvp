@@ -4,6 +4,9 @@ import axios from "axios";
 const LOGIN_URL = "https://api.gruponucleosa.com/Authentication/Login";
 const CATALOG_URL = "https://api.gruponucleosa.com/API_V1/GetCatalog";
 
+let catalogCache = { ts: 0, items: [] };
+const CATALOG_TTL_MS = 10 * 60 * 1000; // 10 min
+
 /** Cache simple en memoria (por ejecución del server) */
 let tokenCache = null;
 let tokenCacheAt = 0;
@@ -109,17 +112,40 @@ function normalize(text = "") {
  * ================================ */
 export async function fetchProductsFromNucleo(query = "") {
   try {
-    const token = await loginNucleo();
-    if (!token) return [];
+    const now = Date.now();
+    let products = [];
 
-    const res = await axios.get(CATALOG_URL, {
-      headers: { Authorization: `Bearer ${token}` },
-      timeout: 30000,
-    });
+    // ----------------------------
+    // ✅ Catálogo cacheado (evita pedir GetCatalog en cada búsqueda)
+    // ----------------------------
+    if (catalogCache.items.length && now - catalogCache.ts < CATALOG_TTL_MS) {
+      products = catalogCache.items;
+      console.log(`🟦 [Núcleo cache HIT] catálogo: ${products.length}`);
+    } else {
+      const token = await loginNucleo();
+      if (!token) return [];
 
-    let products = Array.isArray(res.data) ? res.data : [];
+      console.log("🟦 [Núcleo cache MISS] descargando catálogo...");
+
+      const res = await axios.get(CATALOG_URL, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 30000,
+      });
+
+      products = Array.isArray(res.data) ? res.data : [];
+      catalogCache = { ts: now, items: products };
+
+      console.log(`🟦 [Núcleo] catálogo cacheado: ${products.length}`);
+    }
+
+    // ----------------------------
+    // ✅ Sin query => devolvés catálogo completo (cacheado)
+    // ----------------------------
     if (!query) return products;
 
+    // ----------------------------
+    // ✅ Filtro local (igual que tu lógica)
+    // ----------------------------
     const trimmed = String(query).trim();
     const q = normalize(trimmed);
     const isSkuSearch = looksLikeSku(trimmed);
@@ -128,7 +154,7 @@ export async function fetchProductsFromNucleo(query = "") {
       `🔵 [Núcleo] Buscando "${trimmed}" como ${isSkuSearch ? "SKU" : "nombre"}`
     );
 
-    products = products.filter((p) => {
+    const filtered = products.filter((p) => {
       const name = normalize(p?.item_desc_0 || "");
       const partNumber = String(p?.partNumber || "").toLowerCase();
 
@@ -142,10 +168,22 @@ export async function fetchProductsFromNucleo(query = "") {
       return name.includes(q);
     });
 
-    console.log(`🔵 [Núcleo] Resultados: ${products.length}`);
-    return products;
+    console.log(`🔵 [Núcleo] Resultados: ${filtered.length}`);
+    return filtered;
   } catch (err) {
-    console.error("❌ Error consultando Núcleo:", err.response?.data || err.message);
+    console.error(
+      "❌ Error consultando Núcleo:",
+      err.response?.status,
+      err.response?.data || err.message
+    );
+
+    // Si te tiró 401, podés invalidar token+catálogo para que re-loguee en el próximo intento
+    if (err?.response?.status === 401) {
+      tokenCache = null;
+      tokenCacheAt = 0;
+      catalogCache = { ts: 0, items: [] };
+    }
+
     return [];
   }
 }
