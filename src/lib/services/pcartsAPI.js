@@ -32,6 +32,9 @@ let cacheAt = 0;
 // Ajustá TTL según necesidad (por ejemplo 10 min)
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
+let skuCache = new Map();
+const SKU_CACHE_TTL_MS = 2 * 60 * 1000;
+
 function cacheValid() {
   return cacheAt && Date.now() - cacheAt < CACHE_TTL_MS;
 }
@@ -156,11 +159,18 @@ export async function fetchProductsFromPcarts(query = "") {
 // SKU exacto (sin cache global, porque la API ya filtra)
 // -------------------------------
 export async function fetchProductBySkuFromPcarts(sku) {
-  const cfg = getPcartsConfig();
-  if (!cfg) return null;
-
   const SKU = String(sku || "").trim();
   if (!SKU) return null;
+
+  // ✅ Cache HIT
+  const cached = skuCache.get(SKU);
+  if (cached && Date.now() - cached.ts < SKU_CACHE_TTL_MS) {
+    console.log(`🟦 [PCArts SKU cache HIT] ${SKU}`);
+    return cached.data;
+  }
+
+  const cfg = getPcartsConfig();
+  if (!cfg) return null;
 
   try {
     const headersCatalog = buildHeaders(1005, cfg.TOKEN);
@@ -168,36 +178,52 @@ export async function fetchProductBySkuFromPcarts(sku) {
 
     const params = { offset: 0, limit: 100, sku: SKU };
 
-    // 1005 → catálogo
-    const catRes = await axios.get(cfg.BASE_URL, {
-      headers: headersCatalog,
-      params,
-      timeout: 30000,
-    });
+    const [catRes, stockRes] = await Promise.all([
+      axios.get(cfg.BASE_URL, {
+        headers: headersCatalog,
+        params,
+        timeout: 30000,
+      }),
+      axios.get(cfg.BASE_URL, {
+        headers: headersStock,
+        params,
+        timeout: 30000,
+      }),
+    ]);
 
-    const catalog = Array.isArray(catRes.data?.Products) ? catRes.data.Products : [];
+    const catalog = Array.isArray(catRes.data?.Products)
+      ? catRes.data.Products
+      : [];
+
     if (catalog.length === 0) return null;
 
     const product = catalog[0];
 
-    // 1004 → stock + precio
-    const stockRes = await axios.get(cfg.BASE_URL, {
-      headers: headersStock,
-      params,
-      timeout: 30000,
-    });
+    const stockList = Array.isArray(stockRes.data?.Products)
+      ? stockRes.data.Products
+      : [];
 
-    const stockList = Array.isArray(stockRes.data?.Products) ? stockRes.data.Products : [];
     const stockInfo = stockList[0] || {};
 
-    return {
+    const result = {
       ...product,
       price: Number(stockInfo.price) || 0,
       stock: Number(stockInfo.stock) || 0,
       sku_date_updated: stockInfo.sku_date_updated || null,
     };
+
+    // ✅ Guardar en cache
+    skuCache.set(SKU, {
+      ts: Date.now(),
+      data: result,
+    });
+
+    return result;
   } catch (err) {
-    console.error("❌ Error en fetchProductBySkuFromPcarts:", err.response?.data || err.message);
+    console.error(
+      "❌ Error en fetchProductBySkuFromPcarts:",
+      err.response?.data || err.message
+    );
     return null;
   }
 }
