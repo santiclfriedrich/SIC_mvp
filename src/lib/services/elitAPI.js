@@ -31,6 +31,46 @@ function getCreds() {
   };
 }
 
+// -------------------------------
+// Cache por query (memoria)
+// -------------------------------
+const ELIT_CACHE_TTL_MS = 15 * 60 * 1000; // 15 min
+const ELIT_MAX_KEYS = 500; // guardrail para no crecer infinito
+
+let elitCache = new Map(); // key -> { ts, data }
+let ELIT_BLOCKED_UNTIL = 0;
+
+function now() {
+  return Date.now();
+}
+
+function isBlocked() {
+  return now() < ELIT_BLOCKED_UNTIL;
+}
+
+function backoff(ms) {
+  ELIT_BLOCKED_UNTIL = now() + ms;
+}
+
+function cacheGet(key) {
+  const hit = elitCache.get(key);
+  if (!hit) return null;
+  if (now() - hit.ts > ELIT_CACHE_TTL_MS) {
+    elitCache.delete(key);
+    return null;
+  }
+  return hit.data;
+}
+
+function cacheSet(key, data) {
+  // guardrail: si se llena, borramos el más viejo
+  if (elitCache.size >= ELIT_MAX_KEYS) {
+    const firstKey = elitCache.keys().next().value;
+    elitCache.delete(firstKey);
+  }
+  elitCache.set(key, { ts: now(), data });
+}
+
 // =======================================================
 // 🔎 BÚSQUEDA GENERAL (SKU o nombre)
 // =======================================================
@@ -38,10 +78,27 @@ export async function fetchProductsFromElit(query = "") {
   const creds = getCreds();
   if (!creds) return [];
 
+  const trimmed = String(query || "").trim();
+
+  // clave de cache determinística
+  const cacheKey = `q:${trimmed.toLowerCase() || "*"}`;
+
+  // ✅ cache hit
+  const cached = cacheGet(cacheKey);
+  if (cached) {
+    console.log(`🟦 [Elit cache HIT] "${trimmed}" → ${cached.length}`);
+    return cached;
+  }
+
+  // ✅ backoff activo
+  if (isBlocked()) {
+    console.warn("🟦 [Elit] Backoff activo. Sin cache → []");
+    return [];
+  }
+
   const params = new URLSearchParams();
   params.set("limit", "100");
 
-  const trimmed = String(query || "").trim();
   if (trimmed) {
     if (isSku(trimmed)) params.set("codigo_producto", trimmed);
     else params.set("nombre", trimmed);
@@ -57,9 +114,19 @@ export async function fetchProductsFromElit(query = "") {
       timeout: 25000,
     });
 
-    return Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+    const results = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+
+    cacheSet(cacheKey, results);
+    return results;
   } catch (err) {
-    console.error("❌ Error Elit:", err.response?.data || err.message);
+    const status = err?.response?.status;
+
+    console.error("❌ Error Elit:", status, err.response?.data || err.message);
+
+    // Backoff si rate-limit / forbidden
+    if (status === 403 || status === 429) backoff(60 * 60 * 1000); // 1h
+    else if (status >= 500) backoff(10 * 60 * 1000); // 10 min
+
     return [];
   }
 }
@@ -74,6 +141,16 @@ export async function fetchProductBySkuFromElit(sku) {
   const skuTrim = String(sku || "").trim();
   if (!skuTrim) return null;
 
+  const cacheKey = `sku:${skuTrim.toUpperCase()}`;
+
+  const cached = cacheGet(cacheKey);
+  if (cached) {
+    console.log(`🟦 [Elit SKU cache HIT] ${skuTrim}`);
+    return cached?.[0] || null;
+  }
+
+  if (isBlocked()) return null;
+
   const url = `${BASE_URL}/productos?limit=100&codigo_producto=${encodeURIComponent(skuTrim)}`;
 
   try {
@@ -83,9 +160,16 @@ export async function fetchProductBySkuFromElit(sku) {
     });
 
     const products = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+    cacheSet(cacheKey, products);
+
     return products.length > 0 ? products[0] : null;
   } catch (err) {
-    console.error("❌ Error SKU Elit:", err.response?.data || err.message);
+    const status = err?.response?.status;
+    console.error("❌ Error SKU Elit:", status, err.response?.data || err.message);
+
+    if (status === 403 || status === 429) backoff(60 * 60 * 1000);
+    else if (status >= 500) backoff(10 * 60 * 1000);
+
     return null;
   }
 }
