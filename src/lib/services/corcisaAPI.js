@@ -1,18 +1,24 @@
 // web/src/lib/services/corcisaAPI.js
 import axios from "axios";
 import fs from "fs";
+import { cacheGet as redisCacheGet, cacheSet as redisCacheSet } from "@/lib/cache/redisCache";
 
 const BASE_URL = "https://corcisa.com.ar/api/v1/productos";
 
-/** ===== Cache config (LOCAL) ===== */
-const CORCISA_CATALOG_TTL_MS = 30 * 60 * 1000; // 30 min
-const CORCISA_CACHE_FILE = "/tmp/corcisa_catalog_cache.json"; // en local también sirve
+/** ===== Cache config ===== */
+const CORCISA_CATALOG_TTL_MS = 30 * 60 * 1000; // 30 min local
+const CORCISA_CATALOG_REDIS_TTL_S = 30 * 60; // 30 min redis
+const CORCISA_CACHE_FILE = "/tmp/corcisa_catalog_cache.json";
+
+const CORCISA_SKU_LOCAL_TTL_MS = 10 * 60 * 1000; // 10 min
+const CORCISA_SKU_REDIS_TTL_S = 10 * 60; // 10 min
 
 let CORCISA_CATALOG_CACHE = {
   ts: 0,
   items: [],
 };
 
+const corcisaSkuLocalCache = new Map(); // key -> { ts, value }
 let CORCISA_BLOCKED_UNTIL = 0;
 
 function now() {
@@ -56,6 +62,22 @@ export function clearCorcisaCatalogCache() {
   }
 }
 
+function skuLocalGetEntry(key) {
+  const entry = corcisaSkuLocalCache.get(key);
+  if (!entry) return { hit: false, value: null };
+
+  if (Date.now() - entry.ts > CORCISA_SKU_LOCAL_TTL_MS) {
+    corcisaSkuLocalCache.delete(key);
+    return { hit: false, value: null };
+  }
+
+  return { hit: true, value: entry.value };
+}
+
+function skuLocalSet(key, value) {
+  corcisaSkuLocalCache.set(key, { ts: Date.now(), value });
+}
+
 function isSku(query = "") {
   const q = String(query).trim();
   return q && !q.includes(" ") && /[0-9]/.test(q) && /[A-Z0-9/-]/i.test(q);
@@ -75,15 +97,12 @@ async function corcisaPost({ params, body, timeoutMs = 15000 }) {
 }
 
 /**
- * ✅ Trae TODAS las páginas de Corcisa (hasta que devuelva < limit)
- * - limit máximo: 100
- * - offset incremental
- * - opcional: actualizacion (YYYY-MM-DD HH:MM)
+ * ✅ Trae TODAS las páginas de Corcisa
  */
 export async function fetchAllProductsFromCorcisa({
   limit = 100,
   actualizacion = null,
-  maxPages = 5000, // guardrail
+  maxPages = 5000,
   sleepMs = 150,
 } = {}) {
   const CORCISA_USER_ID = process.env.CORCISA_USER_ID;
@@ -119,22 +138,15 @@ export async function fetchAllProductsFromCorcisa({
       if (batch.length < limit) break;
 
       offset += limit;
-
-      // mini pausa para no rate-limitear
       if (sleepMs) await sleep(sleepMs);
     } catch (err) {
       const status = err?.response?.status;
       const data = err?.response?.data;
 
-      console.error(
-        "❌ Corcisa paginación error:",
-        status,
-        data || err?.message || err
-      );
+      console.error("❌ Corcisa paginación error:", status, data || err?.message || err);
 
-      // Backoff razonable
-      if (status === 403 || status === 429) backoff(60 * 60 * 1000); // 1h
-      else if (status >= 500) backoff(10 * 60 * 1000); // 10m
+      if (status === 403 || status === 429) backoff(60 * 60 * 1000);
+      else if (status >= 500) backoff(10 * 60 * 1000);
 
       break;
     }
@@ -144,10 +156,7 @@ export async function fetchAllProductsFromCorcisa({
 }
 
 /**
- * ✅ Catálogo cacheado (LOCAL)
- * - 1) memoria (rápido)
- * - 2) /tmp (persistencia simple)
- * - 3) refresh paginado
+ * ✅ Catálogo cacheado (local + file + redis)
  */
 export async function fetchAllProductsFromCorcisaCached({
   force = false,
@@ -158,6 +167,7 @@ export async function fetchAllProductsFromCorcisaCached({
   sleepMs = 150,
 } = {}) {
   const t = now();
+  const redisKey = "corcisa:catalog:v1";
 
   // 1) memoria
   if (
@@ -165,45 +175,50 @@ export async function fetchAllProductsFromCorcisaCached({
     CORCISA_CATALOG_CACHE.items.length &&
     t - CORCISA_CATALOG_CACHE.ts < ttlMs
   ) {
-    console.log(
-      `🟦 [Corcisa cache HIT mem] catálogo: ${CORCISA_CATALOG_CACHE.items.length}`
-    );
+    console.log(`🟦 [Corcisa local HIT] catálogo: ${CORCISA_CATALOG_CACHE.items.length}`);
     return CORCISA_CATALOG_CACHE.items;
   }
 
-  // 2) archivo /tmp
+  // 2) /tmp
   if (!force) {
     const file = readCatalogCacheFile();
     if (file?.items?.length && t - file.ts < ttlMs) {
       CORCISA_CATALOG_CACHE = file;
-      console.log(
-        `🟦 [Corcisa cache HIT file] catálogo: ${file.items.length}`
-      );
+      console.log(`🟦 [Corcisa file HIT] catálogo: ${file.items.length}`);
       return file.items;
     }
   }
 
-  // 3) si estamos bloqueados, devolver lo que haya (aunque esté vencido)
+  // 3) redis
+  if (!force) {
+    const redisHit = await redisCacheGet(redisKey);
+    if (redisHit && Array.isArray(redisHit) && redisHit.length) {
+      CORCISA_CATALOG_CACHE = { ts: t, items: redisHit };
+      writeCatalogCacheFile(t, redisHit);
+      console.log(`🟦 [Corcisa redis HIT] catálogo: ${redisHit.length}`);
+      return redisHit;
+    }
+  }
+
+  // 4) si estamos bloqueados, devolver stale
   if (isBlocked()) {
     if (CORCISA_CATALOG_CACHE.items.length) {
-      console.warn(
-        "🟦 [Corcisa] Backoff activo. Devolviendo catálogo de memoria (stale)."
-      );
+      console.warn("🟦 [Corcisa] Backoff activo. Devolviendo catálogo de memoria (stale).");
       return CORCISA_CATALOG_CACHE.items;
     }
+
     const file = readCatalogCacheFile();
     if (file?.items?.length) {
-      console.warn(
-        "🟦 [Corcisa] Backoff activo. Devolviendo catálogo de archivo (stale)."
-      );
+      console.warn("🟦 [Corcisa] Backoff activo. Devolviendo catálogo de archivo (stale).");
       return file.items;
     }
+
     console.warn("🟦 [Corcisa] Backoff activo. Sin cache → []");
     return [];
   }
 
-  // 4) refresh real
-  console.log("🟦 [Corcisa cache MISS] refrescando catálogo...");
+  // 5) request real
+  console.log("🟦 [Corcisa MISS] refrescando catálogo...");
   const items = await fetchAllProductsFromCorcisa({
     limit,
     actualizacion,
@@ -213,15 +228,16 @@ export async function fetchAllProductsFromCorcisaCached({
 
   CORCISA_CATALOG_CACHE = { ts: now(), items };
   writeCatalogCacheFile(CORCISA_CATALOG_CACHE.ts, items);
+  await redisCacheSet(redisKey, items, CORCISA_CATALOG_REDIS_TTL_S);
 
   console.log(`🟦 [Corcisa] catálogo cacheado: ${items.length}`);
   return items;
 }
 
 /**
- * 🔵 Búsqueda (compat con tu flujo actual)
- * - SKU: server-side (rápido, 1 request)
- * - Nombre: usa catálogo cacheado y filtra local
+ * 🔵 Búsqueda
+ * - SKU: server-side + cache local + redis
+ * - Nombre: catálogo cacheado + filtro local
  */
 export async function fetchProductsFromCorcisa(query = "") {
   const CORCISA_USER_ID = process.env.CORCISA_USER_ID;
@@ -235,10 +251,36 @@ export async function fetchProductsFromCorcisa(query = "") {
   const trimmed = String(query).trim();
   const body = { user_id: CORCISA_USER_ID, token: CORCISA_TOKEN };
 
-  // 1) SKU: server-side (rápido)
+  // 1) SKU: server-side + cache
   if (trimmed && isSku(trimmed)) {
+    const skuKey = trimmed.trim().toUpperCase();
+    const cacheKey = `corcisa:sku:list:${skuKey}`;
+
+    // local
+    const { hit: localHit, value: localValue } = skuLocalGetEntry(cacheKey);
+    if (localHit) {
+      console.log(
+        `🟦 [Corcisa SKU local HIT] ${skuKey} → ${
+          Array.isArray(localValue) ? localValue.length : 0
+        }`
+      );
+      return localValue;
+    }
+
+    // redis
+    const redisHit = await redisCacheGet(cacheKey);
+    if (redisHit !== null && redisHit !== undefined) {
+      console.log(
+        `🟦 [Corcisa SKU redis HIT] ${skuKey} → ${
+          Array.isArray(redisHit) ? redisHit.length : 0
+        }`
+      );
+      skuLocalSet(cacheKey, redisHit);
+      return redisHit;
+    }
+
     const params = { limit: 100, offset: 0, codigo_producto: trimmed };
-    console.log("🔵 [Corcisa] SKU POST filtros →", {
+    console.log("🔵 [Corcisa SKU MISS] filtros →", {
       limit: params.limit,
       offset: params.offset,
       codigo_producto: params.codigo_producto,
@@ -247,6 +289,10 @@ export async function fetchProductsFromCorcisa(query = "") {
     try {
       const res = await corcisaPost({ params, body });
       const results = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
+
+      skuLocalSet(cacheKey, results);
+      await redisCacheSet(cacheKey, results, CORCISA_SKU_REDIS_TTL_S);
+
       console.log(`🔵 [Corcisa] Resultados SKU: ${results.length}`);
       return results;
     } catch (err) {
@@ -260,7 +306,7 @@ export async function fetchProductsFromCorcisa(query = "") {
     }
   }
 
-  // 2) Nombre / búsqueda general: catálogo cacheado + filtro local
+  // 2) Nombre: catálogo cacheado + filtro local
   const all = await fetchAllProductsFromCorcisaCached({
     limit: 100,
     ttlMs: CORCISA_CATALOG_TTL_MS,
@@ -268,10 +314,7 @@ export async function fetchProductsFromCorcisa(query = "") {
 
   if (!trimmed) return all;
 
-  const words = trimmed
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  const words = trimmed.toLowerCase().split(/\s+/).filter(Boolean);
 
   const filtered = all.filter((p) => {
     const name = String(p?.nombre || "").toLowerCase();
