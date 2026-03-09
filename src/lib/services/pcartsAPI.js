@@ -1,5 +1,6 @@
 // web/src/lib/services/pcartsAPI.js
 import axios from "axios";
+import { cacheGet as redisCacheGet, cacheSet as redisCacheSet } from "@/lib/cache/redisCache";
 
 function getPcartsConfig() {
   const BASE_URL =
@@ -23,17 +24,21 @@ function buildHeaders(operation, token) {
 }
 
 // -------------------------------
-// Cache simple en memoria (por ejecución del server)
+// Cache dataset completo (local + redis)
 // -------------------------------
 let cacheCatalog = null;
 let cacheStock = null;
 let cacheAt = 0;
 
-// Ajustá TTL según necesidad (por ejemplo 10 min)
-const CACHE_TTL_MS = 10 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000; // 10 min local
+const DATASET_REDIS_TTL_S = 10 * 60; // 10 min redis
 
+// -------------------------------
+// Cache SKU exacto (local + redis)
+// -------------------------------
 let skuCache = new Map();
-const SKU_CACHE_TTL_MS = 2 * 60 * 1000;
+const SKU_CACHE_TTL_MS = 2 * 60 * 1000; // 2 min local
+const SKU_REDIS_TTL_S = 5 * 60; // 5 min redis
 
 function cacheValid() {
   return cacheAt && Date.now() - cacheAt < CACHE_TTL_MS;
@@ -49,6 +54,26 @@ function clearCache() {
   cacheCatalog = null;
   cacheStock = null;
   cacheAt = 0;
+  skuCache = new Map();
+}
+
+function skuCacheGetEntry(key) {
+  const entry = skuCache.get(key);
+  if (!entry) return { hit: false, value: null };
+
+  if (Date.now() - entry.ts > SKU_CACHE_TTL_MS) {
+    skuCache.delete(key);
+    return { hit: false, value: null };
+  }
+
+  return { hit: true, value: entry.data };
+}
+
+function skuCacheSet(key, data) {
+  skuCache.set(key, {
+    ts: Date.now(),
+    data,
+  });
 }
 
 // -------------------------------
@@ -62,10 +87,17 @@ async function fetchPcartsCatalog() {
   const params = { offset: 0, limit: 5000 };
 
   try {
-    const res = await axios.get(cfg.BASE_URL, { headers, params, timeout: 30000 });
+    const res = await axios.get(cfg.BASE_URL, {
+      headers,
+      params,
+      timeout: 30000,
+    });
     return Array.isArray(res.data?.Products) ? res.data.Products : [];
   } catch (err) {
-    console.error("❌ PCArts 1005 (Catálogo) error:", err.response?.data || err.message);
+    console.error(
+      "❌ PCArts 1005 (Catálogo) error:",
+      err.response?.data || err.message
+    );
     return [];
   }
 }
@@ -81,25 +113,72 @@ async function fetchPcartsStock() {
   const params = { offset: 0, limit: 5000 };
 
   try {
-    const res = await axios.get(cfg.BASE_URL, { headers, params, timeout: 30000 });
+    const res = await axios.get(cfg.BASE_URL, {
+      headers,
+      params,
+      timeout: 30000,
+    });
     return Array.isArray(res.data?.Products) ? res.data.Products : [];
   } catch (err) {
-    console.error("❌ PCArts 1004 (Stock) error:", err.response?.data || err.message);
+    console.error(
+      "❌ PCArts 1004 (Stock) error:",
+      err.response?.data || err.message
+    );
     return [];
   }
 }
 
 // -------------------------------
-// Unifica Catálogo (1005) + Stock (1004)
-// Cachea el resultado para evitar 2 requests pesadas por búsqueda
+// Dataset unificado cacheado
+// - local
+// - redis
 // -------------------------------
 async function getUnifiedPcartsDataset() {
+  const redisCatalogKey = "pcarts:catalog:v1";
+  const redisStockKey = "pcarts:stock:v1";
+
+  // 1) local cache
   if (cacheValid() && Array.isArray(cacheCatalog) && Array.isArray(cacheStock)) {
+    console.log(
+      `🟦 [PCArts local HIT] catálogo: ${cacheCatalog.length}, stock: ${cacheStock.length}`
+    );
     return { catalog: cacheCatalog, stock: cacheStock };
   }
 
-  const [catalog, stock] = await Promise.all([fetchPcartsCatalog(), fetchPcartsStock()]);
+  // 2) redis cache
+  const [redisCatalog, redisStock] = await Promise.all([
+    redisCacheGet(redisCatalogKey),
+    redisCacheGet(redisStockKey),
+  ]);
+
+  if (
+    Array.isArray(redisCatalog) &&
+    Array.isArray(redisStock) &&
+    redisCatalog.length >= 0 &&
+    redisStock.length >= 0
+  ) {
+    console.log(
+      `🟦 [PCArts redis HIT] catálogo: ${redisCatalog.length}, stock: ${redisStock.length}`
+    );
+    setCache({ catalog: redisCatalog, stock: redisStock });
+    return { catalog: redisCatalog, stock: redisStock };
+  }
+
+  // 3) request real
+  console.log("🔵 [PCArts MISS] consultando 1004 + 1005...");
+
+  const [catalog, stock] = await Promise.all([
+    fetchPcartsCatalog(),
+    fetchPcartsStock(),
+  ]);
+
   setCache({ catalog, stock });
+
+  await Promise.all([
+    redisCacheSet(redisCatalogKey, catalog, DATASET_REDIS_TTL_S),
+    redisCacheSet(redisStockKey, stock, DATASET_REDIS_TTL_S),
+  ]);
+
   return { catalog, stock };
 }
 
@@ -108,8 +187,6 @@ async function getUnifiedPcartsDataset() {
 // -------------------------------
 export async function fetchProductsFromPcarts(query = "") {
   try {
-    console.log("🔵 PCArts → consultando 1004 + 1005...");
-
     const { catalog, stock } = await getUnifiedPcartsDataset();
 
     console.log(`🔵 PCArts → Catálogo: ${catalog.length}, Stock: ${stock.length}`);
@@ -156,23 +233,35 @@ export async function fetchProductsFromPcarts(query = "") {
 }
 
 // -------------------------------
-// SKU exacto (sin cache global, porque la API ya filtra)
+// SKU exacto (local + redis)
 // -------------------------------
 export async function fetchProductBySkuFromPcarts(sku) {
   const SKU = String(sku || "").trim();
   if (!SKU) return null;
 
-  // ✅ Cache HIT
-  const cached = skuCache.get(SKU);
-  if (cached && Date.now() - cached.ts < SKU_CACHE_TTL_MS) {
-    console.log(`🟦 [PCArts SKU cache HIT] ${SKU}`);
-    return cached.data;
+  const cacheKey = `pcarts:sku:${SKU.toUpperCase()}`;
+
+  // 1) local cache
+  const { hit: localHit, value: localValue } = skuCacheGetEntry(cacheKey);
+  if (localHit) {
+    console.log(`🟦 [PCArts SKU local HIT] ${SKU}`);
+    return localValue;
+  }
+
+  // 2) redis cache
+  const redisHit = await redisCacheGet(cacheKey);
+  if (redisHit !== null && redisHit !== undefined) {
+    console.log(`🟦 [PCArts SKU redis HIT] ${SKU}`);
+    skuCacheSet(cacheKey, redisHit);
+    return redisHit;
   }
 
   const cfg = getPcartsConfig();
   if (!cfg) return null;
 
   try {
+    console.log(`🔵 [PCArts SKU MISS] ${SKU}`);
+
     const headersCatalog = buildHeaders(1005, cfg.TOKEN);
     const headersStock = buildHeaders(1004, cfg.TOKEN);
 
@@ -195,7 +284,11 @@ export async function fetchProductBySkuFromPcarts(sku) {
       ? catRes.data.Products
       : [];
 
-    if (catalog.length === 0) return null;
+    if (catalog.length === 0) {
+      skuCacheSet(cacheKey, null);
+      await redisCacheSet(cacheKey, null, SKU_REDIS_TTL_S);
+      return null;
+    }
 
     const product = catalog[0];
 
@@ -212,11 +305,8 @@ export async function fetchProductBySkuFromPcarts(sku) {
       sku_date_updated: stockInfo.sku_date_updated || null,
     };
 
-    // ✅ Guardar en cache
-    skuCache.set(SKU, {
-      ts: Date.now(),
-      data: result,
-    });
+    skuCacheSet(cacheKey, result);
+    await redisCacheSet(cacheKey, result, SKU_REDIS_TTL_S);
 
     return result;
   } catch (err) {
