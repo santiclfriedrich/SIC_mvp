@@ -1,6 +1,7 @@
-// import { getMasnetCatalogCached } from "../cache/masnetCatalogCache";// web/src/lib/services/masnetAPI.js
+// web/src/lib/services/masnetAPI.js
 import axios from "axios";
 import { getMasnetCatalogCached } from "../cache/masnetCatalogCache"; // ✅ CSV+cache
+import { cacheGet, cacheSet } from "@/lib/cache/redisCache";
 
 function isSku(query = "") {
   const q = String(query).trim();
@@ -39,6 +40,30 @@ function matchAllWords(hay, query) {
   return terms.every((t) => h.includes(t));
 }
 
+// ----------------------------
+// Cache SKU (local + redis)
+// ----------------------------
+const MASNET_SKU_LOCAL_TTL_MS = 5 * 60 * 1000; // 5 min
+const MASNET_SKU_REDIS_TTL_S = 10 * 60; // 10 min (redis en segundos)
+
+const skuLocalCache = new Map(); // key -> { ts, value }
+
+function skuLocalGetEntry(key) {
+  const entry = skuLocalCache.get(key);
+  if (!entry) return { hit: false, value: null };
+
+  if (Date.now() - entry.ts > MASNET_SKU_LOCAL_TTL_MS) {
+    skuLocalCache.delete(key);
+    return { hit: false, value: null };
+  }
+
+  return { hit: true, value: entry.value };
+}
+
+function skuLocalSet(key, value) {
+  skuLocalCache.set(key, { ts: Date.now(), value });
+}
+
 /**
  * 1 request a Masnet (JSON API)
  * - BODY: credenciales
@@ -70,7 +95,7 @@ async function fetchMasnetOnce({ creds, paramsObj, timeout = 25000 }) {
 
 /**
  * 🔵 Búsqueda en Masnet (POST)
- * - SKU => ✅ NO SE TOCA (codigo_producto)
+ * - SKU => ✅ cache local + Redis + request real
  * - Nombre => ✅ CSV + cache (sin sesgo, 1 request por TTL)
  */
 export async function fetchProductsFromMasnet(
@@ -84,14 +109,47 @@ export async function fetchProductsFromMasnet(
   if (!trimmed) return [];
 
   // ----------------------------
-  // ✅ Caso SKU => 1 request (NO TOCAR)
+  // ✅ Caso SKU => cache local + redis
   // ----------------------------
   if (isSku(trimmed)) {
+    const skuKey = trimmed.trim().toUpperCase();
+    const cacheKey = `masnet:sku:list:${skuKey}`;
+
+    // 1) local cache (acepta [] / null)
+    const { hit: localHit, value: localValue } = skuLocalGetEntry(cacheKey);
+    if (localHit) {
+      console.log(
+        `🟦 [Masnet SKU local HIT] ${skuKey} → ${
+          Array.isArray(localValue) ? localValue.length : 0
+        }`
+      );
+      return localValue;
+    }
+
+    // 2) redis cache (acepta [] / null)
+    const redisHit = await cacheGet(cacheKey);
+    if (redisHit !== null && redisHit !== undefined) {
+      console.log(
+        `🟦 [Masnet SKU redis HIT] ${skuKey} → ${
+          Array.isArray(redisHit) ? redisHit.length : 0
+        }`
+      );
+      skuLocalSet(cacheKey, redisHit);
+      return redisHit;
+    }
+
+    // 3) request real
     const { items, url } = await fetchMasnetOnce({
       creds,
       paramsObj: { limit, offset, codigo_producto: trimmed },
     });
-    console.log("🔵 [Masnet SKU] URL:", url, "→", items.length);
+
+    console.log("🔵 [Masnet SKU MISS] URL:", url, "→", items.length);
+
+    // cachear (incluso si viene vacío)
+    skuLocalSet(cacheKey, items);
+    await cacheSet(cacheKey, items, MASNET_SKU_REDIS_TTL_S);
+
     return items;
   }
 
@@ -109,19 +167,24 @@ export async function fetchProductsFromMasnet(
   }
 
   const filtered = catalog.filter((p) => {
-    // p viene normalizado desde masnetCatalogCache.js
-    const hay = `${p.nombre ?? ""} ${p.marca ?? ""} ${p.codigo_producto ?? ""} ${p.codigo_alfa ?? ""}`;
+    const hay = `${p.nombre ?? ""} ${p.marca ?? ""} ${p.codigo_producto ?? ""} ${
+      p.codigo_alfa ?? ""
+    }`;
     return matchAllWords(hay, trimmed);
   });
 
   console.log(
     `🟠 [Masnet nombre CSV] "${trimmed}" → ${filtered.length} (catálogo ${catalog.length})`
   );
+
   return filtered;
 }
 
 /**
- * 🔍 Búsqueda exacta por SKU (la tuya) — NO TOCAR
+ * 🔍 Búsqueda exacta por SKU
+ * - cache local + redis
+ * - luego lookups directos
+ * - luego scan paginado (fallback)
  */
 function normUpper(s) {
   return String(s ?? "").trim().toUpperCase();
@@ -137,7 +200,24 @@ export async function fetchProductBySkuFromMasnet(
   const target = normUpper(sku);
   if (!target) return null;
 
-  // 1) lookups directos (offset 0)
+  const cacheKey = `masnet:sku:exact:${target}`;
+
+  // 1) local cache (acepta null)
+  const { hit: localHit, value: localValue } = skuLocalGetEntry(cacheKey);
+  if (localHit) {
+    console.log(`🟦 [Masnet exact local HIT] ${target}`);
+    return localValue;
+  }
+
+  // 2) redis cache (acepta null)
+  const redisHit = await cacheGet(cacheKey);
+  if (redisHit !== null && redisHit !== undefined) {
+    console.log(`🟦 [Masnet exact redis HIT] ${target}`);
+    skuLocalSet(cacheKey, redisHit);
+    return redisHit;
+  }
+
+  // 3) lookups directos (offset 0)
   for (const key of ["codigo_producto", "codigo_alfa", "id"]) {
     try {
       const { items, url } = await fetchMasnetOnce({
@@ -156,13 +236,20 @@ export async function fetchProductBySkuFromMasnet(
         );
       });
 
-      if (found) return found;
+      if (found) {
+        skuLocalSet(cacheKey, found);
+        await cacheSet(cacheKey, found, MASNET_SKU_REDIS_TTL_S);
+        return found;
+      }
     } catch (err) {
-      console.error(`❌ Masnet exact (${key}):`, err.response?.data || err.message);
+      console.error(
+        `❌ Masnet exact (${key}):`,
+        err.response?.data || err.message
+      );
     }
   }
 
-  // 2) fallback: scan catálogo paginado sin filtros (igual que tenías)
+  // 4) fallback: scan catálogo paginado sin filtros
   console.warn(
     "⚠️ [Masnet exact] No apareció por filtros. Escaneando catálogo paginado..."
   );
@@ -186,12 +273,21 @@ export async function fetchProductBySkuFromMasnet(
       );
     });
 
-    if (found) return found;
+    if (found) {
+      skuLocalSet(cacheKey, found);
+      await cacheSet(cacheKey, found, MASNET_SKU_REDIS_TTL_S);
+      return found;
+    }
 
     if (items.length < limit) break;
     offset += limit;
   }
 
   console.warn("⚠️ [Masnet] SKU no encontrado:", target);
+
+  // cachear not-found corto
+  const notFound = null;
+  skuLocalSet(cacheKey, notFound);
+  await cacheSet(cacheKey, notFound, 2 * 60); // 2 min
   return null;
 }
