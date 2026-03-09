@@ -1,6 +1,7 @@
 // web/src/lib/services/elitAPI.js
 
 import axios from "axios";
+import { cacheGet as redisCacheGet, cacheSet as redisCacheSet } from "@/lib/cache/redisCache";
 
 const BASE_URL = "https://clientes.elit.com.ar/v1/api";
 
@@ -20,7 +21,6 @@ function getCreds() {
   const ELIT_TOKEN = process.env.ELIT_TOKEN;
 
   if (!ELIT_USER_ID || !ELIT_TOKEN) {
-    // En Next esto se lee de web/.env.local (solo server-side)
     console.warn("❌ Elit → Falta ELIT_USER_ID o ELIT_TOKEN");
     return null;
   }
@@ -32,12 +32,13 @@ function getCreds() {
 }
 
 // -------------------------------
-// Cache por query (memoria)
+// Cache local (memoria)
 // -------------------------------
-const ELIT_CACHE_TTL_MS = 15 * 60 * 1000; // 15 min
+const ELIT_LOCAL_TTL_MS = 15 * 60 * 1000; // 15 min
+const ELIT_REDIS_TTL_S = 15 * 60; // 15 min
 const ELIT_MAX_KEYS = 500; // guardrail para no crecer infinito
 
-let elitCache = new Map(); // key -> { ts, data }
+let elitLocalCache = new Map(); // key -> { ts, data }
 let ELIT_BLOCKED_UNTIL = 0;
 
 function now() {
@@ -52,23 +53,28 @@ function backoff(ms) {
   ELIT_BLOCKED_UNTIL = now() + ms;
 }
 
-function cacheGet(key) {
-  const hit = elitCache.get(key);
-  if (!hit) return null;
-  if (now() - hit.ts > ELIT_CACHE_TTL_MS) {
-    elitCache.delete(key);
-    return null;
+function localCacheGetEntry(key) {
+  const entry = elitLocalCache.get(key);
+  if (!entry) return { hit: false, value: null };
+
+  if (now() - entry.ts > ELIT_LOCAL_TTL_MS) {
+    elitLocalCache.delete(key);
+    return { hit: false, value: null };
   }
-  return hit.data;
+
+  return { hit: true, value: entry.data };
 }
 
-function cacheSet(key, data) {
-  // guardrail: si se llena, borramos el más viejo
-  if (elitCache.size >= ELIT_MAX_KEYS) {
-    const firstKey = elitCache.keys().next().value;
-    elitCache.delete(firstKey);
+function localCacheSet(key, data) {
+  if (elitLocalCache.size >= ELIT_MAX_KEYS) {
+    const firstKey = elitLocalCache.keys().next().value;
+    elitLocalCache.delete(firstKey);
   }
-  elitCache.set(key, { ts: now(), data });
+
+  elitLocalCache.set(key, {
+    ts: now(),
+    data,
+  });
 }
 
 // =======================================================
@@ -79,18 +85,32 @@ export async function fetchProductsFromElit(query = "") {
   if (!creds) return [];
 
   const trimmed = String(query || "").trim();
+  const cacheKey = `elit:q:${trimmed.toLowerCase() || "*"}`;
 
-  // clave de cache determinística
-  const cacheKey = `q:${trimmed.toLowerCase() || "*"}`;
-
-  // ✅ cache hit
-  const cached = cacheGet(cacheKey);
-  if (cached) {
-    console.log(`🟦 [Elit cache HIT] "${trimmed}" → ${cached.length}`);
-    return cached;
+  // 1) cache local
+  const { hit: localHit, value: localValue } = localCacheGetEntry(cacheKey);
+  if (localHit) {
+    console.log(
+      `🟦 [Elit local HIT] "${trimmed}" → ${
+        Array.isArray(localValue) ? localValue.length : 0
+      }`
+    );
+    return localValue;
   }
 
-  // ✅ backoff activo
+  // 2) cache redis
+  const redisHit = await redisCacheGet(cacheKey);
+  if (redisHit !== null && redisHit !== undefined) {
+    console.log(
+      `🟦 [Elit redis HIT] "${trimmed}" → ${
+        Array.isArray(redisHit) ? redisHit.length : 0
+      }`
+    );
+    localCacheSet(cacheKey, redisHit);
+    return redisHit;
+  }
+
+  // 3) backoff activo
   if (isBlocked()) {
     console.warn("🟦 [Elit] Backoff activo. Sin cache → []");
     return [];
@@ -107,7 +127,7 @@ export async function fetchProductsFromElit(query = "") {
   const url = `${BASE_URL}/productos?${params.toString()}`;
 
   try {
-    console.log("🔵 [Elit] URL:", url);
+    console.log("🔵 [Elit MISS] URL:", url);
 
     const res = await axios.post(url, creds, {
       headers: { "Content-Type": "application/json" },
@@ -116,14 +136,15 @@ export async function fetchProductsFromElit(query = "") {
 
     const results = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
 
-    cacheSet(cacheKey, results);
+    localCacheSet(cacheKey, results);
+    await redisCacheSet(cacheKey, results, ELIT_REDIS_TTL_S);
+
     return results;
   } catch (err) {
     const status = err?.response?.status;
 
     console.error("❌ Error Elit:", status, err.response?.data || err.message);
 
-    // Backoff si rate-limit / forbidden
     if (status === 403 || status === 429) backoff(60 * 60 * 1000); // 1h
     else if (status >= 500) backoff(10 * 60 * 1000); // 10 min
 
@@ -141,30 +162,51 @@ export async function fetchProductBySkuFromElit(sku) {
   const skuTrim = String(sku || "").trim();
   if (!skuTrim) return null;
 
-  const cacheKey = `sku:${skuTrim.toUpperCase()}`;
+  const cacheKey = `elit:sku:${skuTrim.toUpperCase()}`;
 
-  const cached = cacheGet(cacheKey);
-  if (cached) {
-    console.log(`🟦 [Elit SKU cache HIT] ${skuTrim}`);
-    return cached?.[0] || null;
+  // 1) cache local
+  const { hit: localHit, value: localValue } = localCacheGetEntry(cacheKey);
+  if (localHit) {
+    console.log(`🟦 [Elit SKU local HIT] ${skuTrim}`);
+    return localValue;
   }
 
-  if (isBlocked()) return null;
+  // 2) cache redis
+  const redisHit = await redisCacheGet(cacheKey);
+  if (redisHit !== null && redisHit !== undefined) {
+    console.log(`🟦 [Elit SKU redis HIT] ${skuTrim}`);
+    localCacheSet(cacheKey, redisHit);
+    return redisHit;
+  }
 
-  const url = `${BASE_URL}/productos?limit=100&codigo_producto=${encodeURIComponent(skuTrim)}`;
+  // 3) backoff activo
+  if (isBlocked()) {
+    console.warn("🟦 [Elit SKU] Backoff activo. Sin cache → null");
+    return null;
+  }
+
+  const url = `${BASE_URL}/productos?limit=100&codigo_producto=${encodeURIComponent(
+    skuTrim
+  )}`;
 
   try {
+    console.log("🔵 [Elit SKU MISS] URL:", url);
+
     const res = await axios.post(url, creds, {
       headers: { "Content-Type": "application/json" },
       timeout: 25000,
     });
 
     const products = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
-    cacheSet(cacheKey, products);
+    const result = products.length > 0 ? products[0] : null;
 
-    return products.length > 0 ? products[0] : null;
+    localCacheSet(cacheKey, result);
+    await redisCacheSet(cacheKey, result, ELIT_REDIS_TTL_S);
+
+    return result;
   } catch (err) {
     const status = err?.response?.status;
+
     console.error("❌ Error SKU Elit:", status, err.response?.data || err.message);
 
     if (status === 403 || status === 429) backoff(60 * 60 * 1000);

@@ -1,17 +1,23 @@
 // web/src/lib/services/nucleoAPI.js
 import axios from "axios";
+import { cacheGet as redisCacheGet, cacheSet as redisCacheSet } from "@/lib/cache/redisCache";
 
 const LOGIN_URL = "https://api.gruponucleosa.com/Authentication/Login";
 const CATALOG_URL = "https://api.gruponucleosa.com/API_V1/GetCatalog";
 
+// -------------------------------
+// Cache catálogo: local + redis
+// -------------------------------
 let catalogCache = { ts: 0, items: [] };
-const CATALOG_TTL_MS = 10 * 60 * 1000; // 10 min
+const CATALOG_LOCAL_TTL_MS = 10 * 60 * 1000; // 10 min
+const CATALOG_REDIS_TTL_S = 10 * 60; // 10 min
 
-/** Cache simple en memoria (por ejecución del server) */
+// -------------------------------
+// Cache token: solo local
+// -------------------------------
 let tokenCache = null;
 let tokenCacheAt = 0;
-// Ajustá si el token dura más/menos. Si no estás seguro: 10 min es prudente.
-const TOKEN_TTL_MS = 10 * 60 * 1000;
+const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min
 
 function stripWrappingQuotes(s) {
   const t = String(s ?? "").trim();
@@ -37,22 +43,23 @@ function getCreds() {
   return {
     id: Number(String(NUCLEO_ID).trim()),
     username: String(NUCLEO_USER).trim(),
-    password: stripWrappingQuotes(NUCLEO_PASSWORD), // 👈 clave
+    password: stripWrappingQuotes(NUCLEO_PASSWORD),
   };
 }
 
 /** ================================
- * 🔵 LOGIN (con cache simple)
+ * 🔵 LOGIN (cache local)
  * ================================ */
 async function loginNucleo() {
   const creds = getCreds();
   if (!creds) return null;
 
   const now = Date.now();
-  if (tokenCache && now - tokenCacheAt < TOKEN_TTL_MS) return tokenCache;
+  if (tokenCache && now - tokenCacheAt < TOKEN_TTL_MS) {
+    return tokenCache;
+  }
 
   try {
-    // (debug útil sin exponer password)
     console.log("🔵 [Núcleo] Login payload:", {
       id: creds.id,
       username: creds.username,
@@ -64,10 +71,8 @@ async function loginNucleo() {
       timeout: 25000,
     });
 
-    // ✅ según doc
     const token = res.data?.access_token || res.data?.token || res.data;
 
-    // token debería ser string JWT
     if (typeof token !== "string" || token.length < 20) {
       console.error("❌ Núcleo login: token inválido:", res.data);
       return null;
@@ -108,44 +113,55 @@ function normalize(text = "") {
 }
 
 /** ================================
+ * 🔵 CATÁLOGO COMPLETO (local + redis)
+ * ================================ */
+async function getNucleoCatalogCached() {
+  const now = Date.now();
+  const redisKey = "nucleo:catalog:v1";
+
+  // 1) local cache
+  if (catalogCache.items.length && now - catalogCache.ts < CATALOG_LOCAL_TTL_MS) {
+    console.log(`🟦 [Núcleo local HIT] catálogo: ${catalogCache.items.length}`);
+    return catalogCache.items;
+  }
+
+  // 2) redis cache
+  const redisHit = await redisCacheGet(redisKey);
+  if (redisHit && Array.isArray(redisHit) && redisHit.length) {
+    console.log(`🟦 [Núcleo redis HIT] catálogo: ${redisHit.length}`);
+    catalogCache = { ts: now, items: redisHit };
+    return redisHit;
+  }
+
+  // 3) request real
+  const token = await loginNucleo();
+  if (!token) return [];
+
+  console.log("🟦 [Núcleo MISS] descargando catálogo...");
+
+  const res = await axios.get(CATALOG_URL, {
+    headers: { Authorization: `Bearer ${token}` },
+    timeout: 30000,
+  });
+
+  const products = Array.isArray(res.data) ? res.data : [];
+
+  catalogCache = { ts: now, items: products };
+  await redisCacheSet(redisKey, products, CATALOG_REDIS_TTL_S);
+
+  console.log(`🟦 [Núcleo] catálogo cacheado: ${products.length}`);
+  return products;
+}
+
+/** ================================
  * 🔵 BÚSQUEDA PRINCIPAL
  * ================================ */
 export async function fetchProductsFromNucleo(query = "") {
   try {
-    const now = Date.now();
-    let products = [];
+    const products = await getNucleoCatalogCached();
 
-    // ----------------------------
-    // ✅ Catálogo cacheado (evita pedir GetCatalog en cada búsqueda)
-    // ----------------------------
-    if (catalogCache.items.length && now - catalogCache.ts < CATALOG_TTL_MS) {
-      products = catalogCache.items;
-      console.log(`🟦 [Núcleo cache HIT] catálogo: ${products.length}`);
-    } else {
-      const token = await loginNucleo();
-      if (!token) return [];
-
-      console.log("🟦 [Núcleo cache MISS] descargando catálogo...");
-
-      const res = await axios.get(CATALOG_URL, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 30000,
-      });
-
-      products = Array.isArray(res.data) ? res.data : [];
-      catalogCache = { ts: now, items: products };
-
-      console.log(`🟦 [Núcleo] catálogo cacheado: ${products.length}`);
-    }
-
-    // ----------------------------
-    // ✅ Sin query => devolvés catálogo completo (cacheado)
-    // ----------------------------
     if (!query) return products;
 
-    // ----------------------------
-    // ✅ Filtro local (igual que tu lógica)
-    // ----------------------------
     const trimmed = String(query).trim();
     const q = normalize(trimmed);
     const isSkuSearch = looksLikeSku(trimmed);
@@ -177,7 +193,7 @@ export async function fetchProductsFromNucleo(query = "") {
       err.response?.data || err.message
     );
 
-    // Si te tiró 401, podés invalidar token+catálogo para que re-loguee en el próximo intento
+    // si falla auth, limpiamos token + catálogo local
     if (err?.response?.status === 401) {
       tokenCache = null;
       tokenCacheAt = 0;
