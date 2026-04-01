@@ -1,217 +1,232 @@
 // web/src/lib/services/elitAPI.js
+//
+// Estrategia: catálogo completo via POST paginado (memoria + Redis).
+// Descarga una vez, búsqueda local en cada query.
 
 import axios from "axios";
 import { cacheGet as redisCacheGet, cacheSet as redisCacheSet } from "@/lib/cache/redisCache";
 
 const BASE_URL = "https://clientes.elit.com.ar/v1/api";
 
-/**
- * Detecta si el query parece un SKU
- * Regla simple y efectiva:
- * - no espacios
- * - tiene al menos un número
- */
-function isSku(query = "") {
-  const q = String(query).trim();
-  return q && !q.includes(" ") && /\d/.test(q);
-}
+const CATALOG_REDIS_KEY = "elit:catalog:v3";
+const CATALOG_LOCAL_TTL = 30 * 60 * 1000; // 30 min en memoria
+const CATALOG_REDIS_TTL = 30 * 60;         // 30 min en Redis
+const PAGE_SIZE         = 100;
+const BATCH_SIZE        = 5;               // páginas en paralelo por batch
+const MAX_PAGES         = 300;             // techo de seguridad (~30k productos)
 
+// ── In-memory catalog ─────────────────────────────────────────────────────
+let catalogCache = { ts: 0, items: [] };
+
+// ── Credentials ──────────────────────────────────────────────────────────
 function getCreds() {
-  const ELIT_USER_ID = process.env.ELIT_USER_ID;
-  const ELIT_TOKEN = process.env.ELIT_TOKEN;
+  const user_id = process.env.ELIT_USER_ID;
+  const token   = process.env.ELIT_TOKEN;
 
-  if (!ELIT_USER_ID || !ELIT_TOKEN) {
-    console.warn("❌ Elit → Falta ELIT_USER_ID o ELIT_TOKEN");
+  if (!user_id || !token) {
+    console.warn("❌ [Elit] Faltan ELIT_USER_ID o ELIT_TOKEN");
     return null;
   }
 
-  return {
-    user_id: Number(ELIT_USER_ID),
-    token: String(ELIT_TOKEN).trim(),
-  };
+  return { user_id: Number(user_id), token: String(token).trim() };
 }
 
-// -------------------------------
-// Cache local (memoria)
-// -------------------------------
-const ELIT_LOCAL_TTL_MS = 15 * 60 * 1000; // 15 min
-const ELIT_REDIS_TTL_S = 15 * 60; // 15 min
-const ELIT_MAX_KEYS = 500; // guardrail para no crecer infinito
-
-let elitLocalCache = new Map(); // key -> { ts, data }
-let ELIT_BLOCKED_UNTIL = 0;
-
-function now() {
-  return Date.now();
+// ── Helpers ───────────────────────────────────────────────────────────────
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
-function isBlocked() {
-  return now() < ELIT_BLOCKED_UNTIL;
+function normSku(s) {
+  return String(s || "").trim().toUpperCase().replace(/[\s\-_.]/g, "");
 }
 
-function backoff(ms) {
-  ELIT_BLOCKED_UNTIL = now() + ms;
+function isSku(q = "") {
+  const t = String(q).trim();
+  return t.length > 0 && !t.includes(" ") && /\d/.test(t);
 }
 
-function localCacheGetEntry(key) {
-  const entry = elitLocalCache.get(key);
-  if (!entry) return { hit: false, value: null };
+// ── Single page fetch ─────────────────────────────────────────────────────
+// Returns:
+//   array  → page results
+//   null   → 400 on offset > 0 (end of catalog)
+//   throws → real error (400 on offset=0, 5xx, network)
+async function fetchElitPage(creds, offset) {
+  const url = `${BASE_URL}/productos?limit=${PAGE_SIZE}&offset=${offset}`;
 
-  if (now() - entry.ts > ELIT_LOCAL_TTL_MS) {
-    elitLocalCache.delete(key);
-    return { hit: false, value: null };
-  }
-
-  return { hit: true, value: entry.data };
-}
-
-function localCacheSet(key, data) {
-  if (elitLocalCache.size >= ELIT_MAX_KEYS) {
-    const firstKey = elitLocalCache.keys().next().value;
-    elitLocalCache.delete(firstKey);
-  }
-
-  elitLocalCache.set(key, {
-    ts: now(),
-    data,
+  const res = await axios.post(url, creds, {
+    headers: { "Content-Type": "application/json" },
+    timeout: 12000,
+    validateStatus: (s) => s < 500,
   });
+
+  if (res.status === 400) {
+    if (offset === 1) {
+      // 400 en la primera página = credenciales inválidas u otro error real
+      const msg = res.data?.message ?? res.data?.error ?? JSON.stringify(res.data).slice(0, 200);
+      throw new Error(`Elit 400 en offset=1: ${msg}`);
+    }
+    // 400 en páginas siguientes = fin del catálogo
+    console.log(`🔵 [Elit] offset=${offset} → 400 (fin de catálogo)`);
+    return null;
+  }
+
+  if (res.status !== 200) {
+    throw new Error(`Elit HTTP ${res.status} en offset=${offset}`);
+  }
+
+  const resultado = res.data?.resultado ?? res.data?.data ?? res.data;
+  return Array.isArray(resultado) ? resultado : [];
 }
 
-// =======================================================
-// 🔎 BÚSQUEDA GENERAL (SKU o nombre)
-// =======================================================
-export async function fetchProductsFromElit(query = "") {
+// ── Full catalog download ─────────────────────────────────────────────────
+async function fetchElitCatalogAll(creds) {
+  const all = [];
+
+  // Elit usa offset posicional 1-based: 1, 101, 201, 301...
+  for (let batchStart = 0; batchStart < MAX_PAGES; batchStart += BATCH_SIZE) {
+    const offsets = [];
+    for (let i = 0; i < BATCH_SIZE && batchStart + i < MAX_PAGES; i++) {
+      offsets.push((batchStart + i) * PAGE_SIZE + 1);
+    }
+
+    console.log(`🔵 [Elit] offsets ${offsets[0]}–${offsets[offsets.length - 1]}`);
+
+    const results = await Promise.allSettled(
+      offsets.map((o) => fetchElitPage(creds, o))
+    );
+
+    let reachedEnd = false;
+    for (const r of results) {
+      if (r.status === "rejected") {
+        console.error("❌ [Elit] error en página:", r.reason?.message);
+        reachedEnd = true;
+        break;
+      }
+      if (r.value === null) { reachedEnd = true; break; }     // fin de catálogo
+      all.push(...r.value);
+      if (r.value.length < PAGE_SIZE) { reachedEnd = true; break; } // última página
+    }
+
+    if (reachedEnd) break;
+
+    await sleep(100); // pausa cortés entre batches
+  }
+
+  // Log primer producto para confirmar nombres de campo reales
+  if (all.length > 0) {
+    console.log("🔵 [Elit] primer producto (campo debug):", JSON.stringify(all[0]).slice(0, 300));
+  }
+
+  console.log(`✅ [Elit] catálogo descargado: ${all.length} productos`);
+  return all;
+}
+
+// ── Catalog cache (memory → Redis → API) ──────────────────────────────────
+async function getElitCatalogCached() {
+  const now = Date.now();
+
+  // 1) memoria
+  if (catalogCache.items.length && now - catalogCache.ts < CATALOG_LOCAL_TTL) {
+    console.log(`🟦 [Elit local HIT] ${catalogCache.items.length} productos`);
+    return catalogCache.items;
+  }
+
+  // 2) Redis
+  const redisHit = await redisCacheGet(CATALOG_REDIS_KEY);
+  if (redisHit && Array.isArray(redisHit) && redisHit.length) {
+    console.log(`🟦 [Elit redis HIT] ${redisHit.length} productos`);
+    catalogCache = { ts: now, items: redisHit };
+    return redisHit;
+  }
+
+  // 3) descarga completa
   const creds = getCreds();
   if (!creds) return [];
 
-  const trimmed = String(query || "").trim();
-  const cacheKey = `elit:q:${trimmed.toLowerCase() || "*"}`;
+  console.log("🔵 [Elit MISS] descargando catálogo completo…");
+  const items = await fetchElitCatalogAll(creds);
 
-  // 1) cache local
-  const { hit: localHit, value: localValue } = localCacheGetEntry(cacheKey);
-  if (localHit) {
-    console.log(
-      `🟦 [Elit local HIT] "${trimmed}" → ${
-        Array.isArray(localValue) ? localValue.length : 0
-      }`
-    );
-    return localValue;
-  }
-
-  // 2) cache redis
-  const redisHit = await redisCacheGet(cacheKey);
-  if (redisHit !== null && redisHit !== undefined) {
-    console.log(
-      `🟦 [Elit redis HIT] "${trimmed}" → ${
-        Array.isArray(redisHit) ? redisHit.length : 0
-      }`
-    );
-    localCacheSet(cacheKey, redisHit);
-    return redisHit;
-  }
-
-  // 3) backoff activo
-  if (isBlocked()) {
-    console.warn("🟦 [Elit] Backoff activo. Sin cache → []");
+  if (!items.length) {
+    console.warn("⚠️ [Elit] catálogo vacío — verificar credenciales");
     return [];
   }
 
-  const params = new URLSearchParams();
-  params.set("limit", "100");
+  catalogCache = { ts: now, items };
+  await redisCacheSet(CATALOG_REDIS_KEY, items, CATALOG_REDIS_TTL);
+  console.log(`✅ [Elit] cacheado en Redis: ${items.length} productos`);
+  return items;
+}
 
-  if (trimmed) {
-    if (isSku(trimmed)) params.set("codigo_producto", trimmed);
-    else params.set("nombre", trimmed);
-  }
+// ── Warm check ────────────────────────────────────────────────────────────
+export function isElitCacheWarm() {
+  return catalogCache.items.length > 0 && Date.now() - catalogCache.ts < CATALOG_LOCAL_TTL;
+}
 
-  const url = `${BASE_URL}/productos?${params.toString()}`;
+// ── SKU helpers (tolerante a variaciones de nombre de campo) ──────────────
+function getProductSku(p) {
+  return (
+    p.codigo_producto ??
+    p.codigo_produto  ??
+    p.codigo_alfa     ??
+    p.codigo          ??
+    p.sku             ??
+    ""
+  );
+}
 
+// ── Public search functions ───────────────────────────────────────────────
+
+export async function fetchProductsFromElit(query = "") {
   try {
-    console.log("🔵 [Elit MISS] URL:", url);
+    const catalog = await getElitCatalogCached();
 
-    const res = await axios.post(url, creds, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 25000,
+    const q = String(query || "").trim();
+    if (!q) return catalog;
+
+    if (isSku(q)) {
+      const qNorm = normSku(q);
+      const results = catalog.filter((p) => {
+        const s1 = normSku(getProductSku(p));
+        const s2 = normSku(p.codigo_alfa ?? "");
+        return s1 === qNorm || s2 === qNorm || s1.includes(qNorm) || s2.includes(qNorm);
+      });
+      console.log(`🔵 [Elit SKU] "${q}" → ${results.length}`);
+      return results;
+    }
+
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const results = catalog.filter((p) => {
+      const hay = `${p.nombre ?? ""} ${p.marca ?? ""} ${p.categoria ?? ""} ${getProductSku(p)}`.toLowerCase();
+      return terms.every((t) => hay.includes(t));
     });
 
-    const results = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
-
-    localCacheSet(cacheKey, results);
-    await redisCacheSet(cacheKey, results, ELIT_REDIS_TTL_S);
-
+    console.log(`🔵 [Elit nombre] "${q}" → ${results.length}`);
     return results;
   } catch (err) {
-    const status = err?.response?.status;
-
-    console.error("❌ Error Elit:", status, err.response?.data || err.message);
-
-    if (status === 403 || status === 429) backoff(60 * 60 * 1000); // 1h
-    else if (status >= 500) backoff(10 * 60 * 1000); // 10 min
-
+    console.error("❌ [Elit] fetchProductsFromElit:", err.message);
     return [];
   }
 }
 
-// =======================================================
-// 🔍 BÚSQUEDA EXACTA POR SKU (para /api/products/:sku)
-// =======================================================
 export async function fetchProductBySkuFromElit(sku) {
-  const creds = getCreds();
-  if (!creds) return null;
-
-  const skuTrim = String(sku || "").trim();
-  if (!skuTrim) return null;
-
-  const cacheKey = `elit:sku:${skuTrim.toUpperCase()}`;
-
-  // 1) cache local
-  const { hit: localHit, value: localValue } = localCacheGetEntry(cacheKey);
-  if (localHit) {
-    console.log(`🟦 [Elit SKU local HIT] ${skuTrim}`);
-    return localValue;
-  }
-
-  // 2) cache redis
-  const redisHit = await redisCacheGet(cacheKey);
-  if (redisHit !== null && redisHit !== undefined) {
-    console.log(`🟦 [Elit SKU redis HIT] ${skuTrim}`);
-    localCacheSet(cacheKey, redisHit);
-    return redisHit;
-  }
-
-  // 3) backoff activo
-  if (isBlocked()) {
-    console.warn("🟦 [Elit SKU] Backoff activo. Sin cache → null");
-    return null;
-  }
-
-  const url = `${BASE_URL}/productos?limit=100&codigo_producto=${encodeURIComponent(
-    skuTrim
-  )}`;
-
   try {
-    console.log("🔵 [Elit SKU MISS] URL:", url);
+    const catalog = await getElitCatalogCached();
 
-    const res = await axios.post(url, creds, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 25000,
+    const target = String(sku || "").trim();
+    if (!target) return null;
+
+    const tNorm = normSku(target);
+
+    const found = catalog.find((p) => {
+      const s1 = normSku(getProductSku(p));
+      const s2 = normSku(p.codigo_alfa ?? "");
+      return s1 === tNorm || s2 === tNorm;
     });
 
-    const products = Array.isArray(res.data?.resultado) ? res.data.resultado : [];
-    const result = products.length > 0 ? products[0] : null;
-
-    localCacheSet(cacheKey, result);
-    await redisCacheSet(cacheKey, result, ELIT_REDIS_TTL_S);
-
-    return result;
+    console.log(`🔵 [Elit SKU exacto] "${target}" → ${found ? "encontrado" : "no encontrado"}`);
+    return found ?? null;
   } catch (err) {
-    const status = err?.response?.status;
-
-    console.error("❌ Error SKU Elit:", status, err.response?.data || err.message);
-
-    if (status === 403 || status === 429) backoff(60 * 60 * 1000);
-    else if (status >= 500) backoff(10 * 60 * 1000);
-
+    console.error("❌ [Elit] fetchProductBySkuFromElit:", err.message);
     return null;
   }
 }

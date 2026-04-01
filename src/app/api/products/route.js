@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getAllProducts } from "@/lib/controllers/productController";
 
 export const runtime = "nodejs";
+export const maxDuration = 30; // segundos; requiere Vercel Pro (hobby: 10s)
 
 // /api/products?q=nombre
 export async function GET(request) {

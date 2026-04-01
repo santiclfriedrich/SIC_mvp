@@ -17,11 +17,14 @@ function App() {
     fetchProducts,
     products,
     loading,
+    hasSearched,
+    lastQuery,
+    error,
   } = useProductStore();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const showResults = products.length > 0 || loading;
+  const showResults = hasSearched || loading;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -54,15 +57,39 @@ function App() {
 
                 {loading && (
                   <p className="mt-4 text-sm text-gray-500">
-                    Buscando productos…
+                    Buscando en todos los proveedores…
+                  </p>
+                )}
+
+                {!loading && hasSearched && products.length > 0 && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    {products.length} {products.length === 1 ? "producto" : "productos"} encontrados para{" "}
+                    <span className="font-medium text-gray-700">&quot;{lastQuery}&quot;</span>
+                  </p>
+                )}
+
+                {!loading && hasSearched && error && (
+                  <p className="mt-4 text-sm text-red-600">
+                    Error al buscar. Por favor reintentá.
                   </p>
                 )}
               </div>
 
-              <ProductGrid
-                products={products}
-                onProductClick={setSelectedProduct}
-              />
+              {!loading && hasSearched && products.length === 0 && !error && (
+                <div className="text-center py-16 text-gray-500">
+                  <p className="text-lg font-medium">Sin resultados para &quot;{lastQuery}&quot;</p>
+                  <p className="text-sm mt-1">
+                    Probá con otro código de producto o nombre.
+                  </p>
+                </div>
+              )}
+
+              {products.length > 0 && (
+                <ProductGrid
+                  products={products}
+                  onProductClick={setSelectedProduct}
+                />
+              )}
             </>
           )}
         </div>

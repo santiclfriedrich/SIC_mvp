@@ -1,6 +1,6 @@
 // web/src/lib/services/masnetAPI.js
 import axios from "axios";
-import { getMasnetCatalogCached } from "../cache/masnetCatalogCache"; // ✅ CSV+cache
+import { getMasnetCatalogCached, isMasnetCatalogWarm } from "../cache/masnetCatalogCache"; // ✅ CSV+cache
 import { cacheGet, cacheSet } from "@/lib/cache/redisCache";
 
 function isSku(query = "") {
@@ -65,13 +65,26 @@ function skuLocalSet(key, value) {
 }
 
 /**
+ * Returns true when the relevant local cache is populated for this query.
+ * - SKU queries → skuLocalCache
+ * - Name queries → CSV MEM catalog
+ */
+export function isMasnetCacheWarm(query = "") {
+  const trimmed = String(query || "").trim();
+  if (isSku(trimmed)) {
+    return skuLocalGetEntry(`masnet:sku:list:${trimmed.toUpperCase()}`).hit;
+  }
+  return isMasnetCatalogWarm();
+}
+
+/**
  * 1 request a Masnet (JSON API)
  * - BODY: credenciales
  * - QUERYSTRING: limit/offset/codigo_producto/actualizacion
  *
  * ⚠️ OJO: en doc no figura "nombre", así que NO lo usamos para búsquedas por nombre.
  */
-async function fetchMasnetOnce({ creds, paramsObj, timeout = 25000 }) {
+async function fetchMasnetOnce({ creds, paramsObj, timeout = 5000 }) {
   const body = { user_id: creds.user_id, token: creds.token };
 
   const params = new URLSearchParams();
@@ -192,7 +205,7 @@ function normUpper(s) {
 
 export async function fetchProductBySkuFromMasnet(
   sku,
-  { limit = 100, maxPages = 30, timeout = 25000 } = {}
+  { limit = 100, maxPages = 30, timeout = 5000 } = {}
 ) {
   const creds = getCreds();
   if (!creds) return null;

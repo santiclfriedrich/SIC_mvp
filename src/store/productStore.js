@@ -6,6 +6,8 @@ export const useProductStore = create((set, get) => ({
   loading: false,
   products: [],
   error: null,
+  hasSearched: false,   // true after the first completed search
+  lastQuery: "",        // the query that produced the current results
 
   setQuery: (q) => set({ query: q }),
 
@@ -13,7 +15,7 @@ export const useProductStore = create((set, get) => ({
     const query = get().query;
     if (!query || query.trim().length < 2) return;
 
-    set({ loading: true, error: null });
+    set({ loading: true, error: null, hasSearched: false });
 
     try {
       const res = await fetch(
@@ -23,9 +25,9 @@ export const useProductStore = create((set, get) => ({
       if (!res.ok) throw new Error("Error backend");
 
       const data = await res.json();
-      set({ products: data, loading: false });
-    } catch  {
-      set({ error: "Error al buscar productos", loading: false });
+      set({ products: data, loading: false, hasSearched: true, lastQuery: query.trim() });
+    } catch {
+      set({ error: "Error al buscar productos", loading: false, hasSearched: true, lastQuery: query.trim() });
     }
   },
 }));

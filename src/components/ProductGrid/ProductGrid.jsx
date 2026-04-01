@@ -7,7 +7,7 @@ export const ProductGrid = ({ products, onProductClick }) => {
   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
     {products.map((p) => (
       <ProductCard
-        key={`${p.sku}-${p.provider}`}
+        key={p.sku}
         product={p}
         onClick={() => onProductClick(p)}
       />

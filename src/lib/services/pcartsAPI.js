@@ -90,7 +90,7 @@ async function fetchPcartsCatalog() {
     const res = await axios.get(cfg.BASE_URL, {
       headers,
       params,
-      timeout: 30000,
+      timeout: 8000,
     });
     return Array.isArray(res.data?.Products) ? res.data.Products : [];
   } catch (err) {
@@ -116,7 +116,7 @@ async function fetchPcartsStock() {
     const res = await axios.get(cfg.BASE_URL, {
       headers,
       params,
-      timeout: 30000,
+      timeout: 8000,
     });
     return Array.isArray(res.data?.Products) ? res.data.Products : [];
   } catch (err) {
@@ -271,12 +271,12 @@ export async function fetchProductBySkuFromPcarts(sku) {
       axios.get(cfg.BASE_URL, {
         headers: headersCatalog,
         params,
-        timeout: 30000,
+        timeout: 8000,
       }),
       axios.get(cfg.BASE_URL, {
         headers: headersStock,
         params,
-        timeout: 30000,
+        timeout: 8000,
       }),
     ]);
 
@@ -316,6 +316,11 @@ export async function fetchProductBySkuFromPcarts(sku) {
     );
     return null;
   }
+}
+
+/** Returns true when the local catalog+stock dataset is populated and within TTL. */
+export function isPcartsCacheWarm() {
+  return cacheValid();
 }
 
 // Opcional: para forzar refresh desde algún endpoint admin interno

@@ -68,7 +68,7 @@ async function loginNucleo() {
 
     const res = await axios.post(LOGIN_URL, creds, {
       headers: { "Content-Type": "application/json", Accept: "*/*" },
-      timeout: 25000,
+      timeout: 5000,
     });
 
     const token = res.data?.access_token || res.data?.token || res.data;
@@ -141,7 +141,7 @@ async function getNucleoCatalogCached() {
 
   const res = await axios.get(CATALOG_URL, {
     headers: { Authorization: `Bearer ${token}` },
-    timeout: 30000,
+    timeout: 8000,
   });
 
   const products = Array.isArray(res.data) ? res.data : [];
@@ -151,6 +151,13 @@ async function getNucleoCatalogCached() {
 
   console.log(`🟦 [Núcleo] catálogo cacheado: ${products.length}`);
   return products;
+}
+
+/** ================================
+ * 🔵 WARM CHECK
+ * ================================ */
+export function isNucleoCacheWarm() {
+  return catalogCache.items.length > 0 && Date.now() - catalogCache.ts < CATALOG_LOCAL_TTL_MS;
 }
 
 /** ================================

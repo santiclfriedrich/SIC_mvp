@@ -215,6 +215,11 @@ function writeTmpCache(ts, items) {
 
 // ---------- Public API ----------
 
+/** Returns true if the in-memory catalog is populated and within TTL. */
+export function isMasnetCatalogWarm() {
+  return MEM.items.length > 0 && Date.now() - MEM.ts < TTL_MS;
+}
+
 export async function refreshMasnetCatalogFromCSV() {
   const user_id = process.env.MASNET_USER_ID;
   const token = process.env.MASNET_TOKEN;
@@ -230,10 +235,19 @@ export async function refreshMasnetCatalogFromCSV() {
   // IMPORTANTE: NO loguear token
   console.log("🟠 [Masnet CSV] descargando catálogo (CSV)…");
 
-  const res = await fetch(url, {
-    method: "GET",
-    headers: { Accept: "text/csv,*/*" },
-  });
+  const controller = new AbortController();
+  const abortTimer = setTimeout(() => controller.abort(), 18000); // 18s hard cap
+
+  let res;
+  try {
+    res = await fetch(url, {
+      method: "GET",
+      headers: { Accept: "text/csv,*/*" },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(abortTimer);
+  }
 
   if (!res.ok) {
     const txt = await res.text().catch(() => "");

@@ -53,6 +53,14 @@ function writeCatalogCacheFile(ts, items) {
   }
 }
 
+/** Returns true when the in-memory catalog is populated and within TTL. */
+export function isCorcisaCacheWarm() {
+  return (
+    CORCISA_CATALOG_CACHE.items.length > 0 &&
+    Date.now() - CORCISA_CATALOG_CACHE.ts < CORCISA_CATALOG_TTL_MS
+  );
+}
+
 export function clearCorcisaCatalogCache() {
   CORCISA_CATALOG_CACHE = { ts: 0, items: [] };
   try {
@@ -87,7 +95,7 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function corcisaPost({ params, body, timeoutMs = 15000 }) {
+async function corcisaPost({ params, body, timeoutMs = 5000 }) {
   const res = await axios.post(BASE_URL, body, {
     params,
     timeout: timeoutMs,
