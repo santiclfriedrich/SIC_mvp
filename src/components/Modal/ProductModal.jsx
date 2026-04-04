@@ -183,7 +183,7 @@ export const ProductModal = ({ product, onClose }) => {
         {/* COMPARATIVA — INTACTA */}
         {providers.length > 1 && (
           <div className="px-6 pb-6">
-            <h3 className="font-semibold mb-3">
+            <h3 className="font-semibold mb-3 text-gray-900">
               Comparación de precios{" "}
               <span className="text-sm text-black">
                 ({providers.length} proveedores)
@@ -226,7 +226,7 @@ export const ProductModal = ({ product, onClose }) => {
                     </div>
 
                     <div className="min-w-[140px] text-right">
-                      <p className="font-semibold">
+                      <p className="font-semibold text-gray-900">
                         USD{" "}
                         {p.price.toLocaleString("es-AR", {
                           minimumFractionDigits: 2,
