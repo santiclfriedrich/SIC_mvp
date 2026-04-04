@@ -185,12 +185,12 @@ export const ProductModal = ({ product, onClose }) => {
           <div className="px-6 pb-6">
             <h3 className="font-semibold mb-3">
               Comparación de precios{" "}
-              <span className="text-sm text-gray-700">
+              <span className="text-sm text-black">
                 ({providers.length} proveedores)
               </span>
             </h3>
 
-            <div className="flex items-center justify-between gap-4 px-4 py-3 text-xs text-gray-700 font-medium border-b border-gray-100">
+            <div className="flex items-center justify-between gap-4 px-4 py-3 text-xs text-black font-medium border-b border-gray-100">
               <div className="min-w-[140px]">Proveedor</div>
               <div className="min-w-[90px]">SKU</div>
               <div className="min-w-[140px] text-right">Precio</div>
@@ -221,7 +221,7 @@ export const ProductModal = ({ product, onClose }) => {
                       )}
                     </div>
 
-                    <div className="min-w-[90px] font-mono text-xs text-gray-600">
+                    <div className="min-w-[90px] font-mono text-xs text-black">
                       {product.sku}
                     </div>
 
@@ -232,7 +232,7 @@ export const ProductModal = ({ product, onClose }) => {
                           minimumFractionDigits: 2,
                         })}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-black">
                         + IVA {p.iva}
                       </p>
                     </div>
@@ -270,7 +270,7 @@ export const ProductModal = ({ product, onClose }) => {
 
         {/* FOOTER */}
         <div className="flex justify-end gap-4 p-6 border-t border-gray-100">
-          <button onClick={onClose} className="text-gray-600">
+          <button onClick={onClose} className="text-black">
             Cerrar
           </button>
 
