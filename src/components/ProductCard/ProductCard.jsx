@@ -38,6 +38,11 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       badge: "bg-sky-100 text-sky-800",
       hoverBorder: "hover:border-sky-400",
     },
+    Invid: {
+      badge: "text-white",
+      hoverBorder: "hover:border-[#009ee2]",
+      badgeBg: "#009ee2",
+    },
   };
 
   const style =
@@ -76,7 +81,10 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
     >
       {/* 🏷 Provider badge */}
       <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-        <span className={`px-3 py-1 rounded-full text-xs font-medium ${style.badge}`}>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-medium ${style.badge}`}
+          style={style.badgeBg ? { backgroundColor: style.badgeBg } : undefined}
+        >
           {provider}
         </span>
 

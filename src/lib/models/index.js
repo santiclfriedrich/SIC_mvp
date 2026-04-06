@@ -4,3 +4,4 @@ export { formatMasnetProducts } from "./masnetModel.js";
 export { formatCorcisaProducts } from "./corcisaModel.js";
 export { formatNucleoProducts } from "./nucleoModel.js";
 export { formatPcartsProducts, formatPcartsSingle } from "./pcartsModel.js";
+export { formatInvidProducts } from "./invidModel.js";

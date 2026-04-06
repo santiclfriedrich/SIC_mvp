@@ -8,7 +8,7 @@ import { ProductModal } from "../../components/Modal/ProductModal";
 import { SearchBar } from "../../components/SearchBar/SearchBar";
 
 import { useProductStore } from "../../store/productStore";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function App() {
   const {
@@ -23,6 +23,11 @@ function App() {
   } = useProductStore();
 
   const [selectedProduct, setSelectedProduct] = useState(null);
+
+  // Precalentar catálogos lentos (ej: Invid) al cargar la app
+  useEffect(() => {
+    fetch("/api/warmup", { method: "POST" }).catch(() => {});
+  }, []);
 
   const showResults = hasSearched || loading;
 

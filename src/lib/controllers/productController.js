@@ -10,6 +10,7 @@ import { fetchProductsFromMasnet, fetchProductBySkuFromMasnet, isMasnetCacheWarm
 import { fetchProductsFromCorcisa, isCorcisaCacheWarm } from "@/lib/services/corcisaAPI";
 import { fetchProductsFromNucleo, isNucleoCacheWarm } from "@/lib/services/nucleoAPI";
 import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts, isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
+import { fetchProductsFromInvid, fetchProductBySkuFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
 
 // Models
 import {
@@ -19,6 +20,7 @@ import {
   formatNucleoProducts,
   formatPcartsProducts,
   formatPcartsSingle,
+  formatInvidProducts,
 } from "@/lib/models";
 
 // ---------------------------------------------------------------------------
@@ -38,6 +40,7 @@ const PROVIDER_TIMEOUTS = {
   Corcisa: { warmMs: 2500, coldMs: 20000 },
   Nucleo:  { warmMs: 2500, coldMs: 20000 },
   PCArts:  { warmMs: 2500, coldMs: 15000 },
+  Invid:   { warmMs: 2500, coldMs: 45000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -122,15 +125,16 @@ export async function getAllProducts({ q = "" } = {}) {
     console.log(`🔎 Buscando productos: "${query}" ...`);
     const start = Date.now();
 
-    const [elit, masnet, corcisa, nucleo, pcarts] = await Promise.allSettled([
-      fetchProvider("Elit",    () => isElitCacheWarm(),  () => fetchProductsFromElit(query)),
+    const [elit, masnet, corcisa, nucleo, pcarts, invid] = await Promise.allSettled([
+      fetchProvider("Elit",    () => isElitCacheWarm(),         () => fetchProductsFromElit(query)),
       fetchProvider("Masnet",  () => isMasnetCacheWarm(query),  () => fetchProductsFromMasnet(query)),
       fetchProvider("Corcisa", () => isCorcisaCacheWarm(),      () => fetchProductsFromCorcisa(query)),
       fetchProvider("Nucleo",  () => isNucleoCacheWarm(),       () => fetchProductsFromNucleo(query)),
       fetchProvider("PCArts",  () => isPcartsCacheWarm(),       () => fetchProductsFromPcarts(query)),
+      fetchProvider("Invid",   () => isInvidCacheWarm(),        () => fetchProductsFromInvid(query)),
     ]);
 
-    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts };
+    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid };
     const failed      = Object.entries(providerMap).filter(([, r]) => r.status === "rejected").map(([n]) => n);
 
     if (failed.length) {
@@ -142,8 +146,9 @@ export async function getAllProducts({ q = "" } = {}) {
     const corcisaData = corcisa.status === "fulfilled" ? formatCorcisaProducts(corcisa.value) : [];
     const nucleoData  = nucleo.status  === "fulfilled" ? formatNucleoProducts(nucleo.value)   : [];
     const pcartsData  = pcarts.status  === "fulfilled" ? formatPcartsProducts(pcarts.value)   : [];
+    const invidData   = invid.status   === "fulfilled" ? formatInvidProducts(invid.value)     : [];
 
-    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData);
+    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData);
     allProducts = allProducts.map(cleanMergedProduct);
 
     if (query) {
@@ -170,7 +175,7 @@ export async function getAllProducts({ q = "" } = {}) {
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(
-      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${5 - failed.length}/5 proveedores`
+      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${6 - failed.length}/6 proveedores`
     );
 
     return allProducts;
@@ -190,16 +195,17 @@ export async function getProductBySku({ sku = "" } = {}) {
   const SKU = skuTrim.toUpperCase();
 
   try {
-    const [elit, masnet, corcisa, nucleo, pcarts] = await Promise.allSettled([
-      fetchProvider("Elit",    () => isElitCacheWarm(),  () => fetchProductBySkuFromElit(skuTrim)),
-      fetchProvider("Masnet",  () => isMasnetCacheWarm(skuTrim),  () => fetchProductBySkuFromMasnet(skuTrim)),
-      fetchProvider("Corcisa", () => isCorcisaCacheWarm(),        () => fetchProductsFromCorcisa(skuTrim)),
-      fetchProvider("Nucleo",  () => isNucleoCacheWarm(),         () => fetchProductsFromNucleo(skuTrim)),
-      fetchProvider("PCArts",  () => isPcartsCacheWarm(),         () => fetchProductBySkuFromPcarts(skuTrim)),
+    const [elit, masnet, corcisa, nucleo, pcarts, invid] = await Promise.allSettled([
+      fetchProvider("Elit",    () => isElitCacheWarm(),         () => fetchProductBySkuFromElit(skuTrim)),
+      fetchProvider("Masnet",  () => isMasnetCacheWarm(skuTrim),() => fetchProductBySkuFromMasnet(skuTrim)),
+      fetchProvider("Corcisa", () => isCorcisaCacheWarm(),      () => fetchProductsFromCorcisa(skuTrim)),
+      fetchProvider("Nucleo",  () => isNucleoCacheWarm(),       () => fetchProductsFromNucleo(skuTrim)),
+      fetchProvider("PCArts",  () => isPcartsCacheWarm(),       () => fetchProductBySkuFromPcarts(skuTrim)),
+      fetchProvider("Invid",   () => isInvidCacheWarm(),        () => fetchProductBySkuFromInvid(skuTrim)),
     ]);
 
-    const failed = [elit, masnet, corcisa, nucleo, pcarts]
-      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts"][i] }))
+    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid]
+      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid"][i] }))
       .filter(({ r }) => r.status === "rejected")
       .map(({ name }) => name);
 
@@ -230,7 +236,10 @@ export async function getProductBySku({ sku = "" } = {}) {
     const pcartsData =
       pcarts.status === "fulfilled" && pcarts.value ? [formatPcartsSingle(pcarts.value)] : [];
 
-    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData).map(
+    const invidData =
+      invid.status === "fulfilled" && invid.value ? formatInvidProducts([invid.value]) : [];
+
+    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData).map(
       cleanMergedProduct
     );
   } catch (error) {

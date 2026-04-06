@@ -22,6 +22,7 @@ const PROVIDER_STYLES = {
   PCArts: { badge: "bg-violet-100 text-violet-800" },
   Masnet: { badge: "bg-blue-100 text-blue-800" },
   Corcisa: { badge: "bg-sky-100 text-sky-800" },
+  Invid:   { badge: "text-white", badgeBg: "#009ee2" },
 };
 
 export const ProductModal = ({ product, onClose }) => {
@@ -87,7 +88,10 @@ export const ProductModal = ({ product, onClose }) => {
         {/* HEADER */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div className="flex items-center gap-2">
-            <span className={`px-3 py-1 rounded-full text-sm ${bestStyle.badge}`}>
+            <span
+              className={`px-3 py-1 rounded-full text-sm ${bestStyle.badge}`}
+              style={bestStyle.badgeBg ? { backgroundColor: bestStyle.badgeBg } : undefined}
+            >
               {best.provider}
             </span>
 
@@ -213,6 +217,7 @@ export const ProductModal = ({ product, onClose }) => {
                     <div className="min-w-[140px] flex items-center gap-2">
                       <span
                         className={`px-3 py-1 rounded-full text-xs font-medium ${style.badge}`}
+                        style={style.badgeBg ? { backgroundColor: style.badgeBg } : undefined}
                       >
                         {p.provider}
                       </span>

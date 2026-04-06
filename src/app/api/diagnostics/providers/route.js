@@ -11,6 +11,7 @@ import { fetchProductsFromMasnet,  isMasnetCacheWarm } from "@/lib/services/masn
 import { fetchProductsFromCorcisa, isCorcisaCacheWarm} from "@/lib/services/corcisaAPI";
 import { fetchProductsFromNucleo,  isNucleoCacheWarm } from "@/lib/services/nucleoAPI";
 import { fetchProductsFromPcarts,  isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
+import { fetchProductsFromInvid,   isInvidCacheWarm }  from "@/lib/services/invidAPI";
 
 import { cacheGet, cacheSet }  from "@/lib/cache/redisCache";
 
@@ -42,6 +43,11 @@ const PROVIDERS = (q) => [
     name:     "PCArts",
     fn:       () => fetchProductsFromPcarts(q),
     isWarm:   () => isPcartsCacheWarm(),
+  },
+  {
+    name:     "Invid",
+    fn:       () => fetchProductsFromInvid(q),
+    isWarm:   () => isInvidCacheWarm(),
   },
 ];
 
