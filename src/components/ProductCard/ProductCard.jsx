@@ -38,6 +38,11 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       badge: "bg-sky-100 text-sky-800",
       hoverBorder: "hover:border-sky-400",
     },
+    SolutionBox: {
+      badge: "text-white",
+      hoverBorder: "hover:border-[#e31e24]",
+      badgeBg: "#e31e24",
+    },
     Invid: {
       badge: "text-white",
       hoverBorder: "hover:border-[#009ee2]",

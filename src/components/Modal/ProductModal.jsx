@@ -22,7 +22,8 @@ const PROVIDER_STYLES = {
   PCArts: { badge: "bg-violet-100 text-violet-800" },
   Masnet: { badge: "bg-blue-100 text-blue-800" },
   Corcisa: { badge: "bg-sky-100 text-sky-800" },
-  Invid:   { badge: "text-white", badgeBg: "#009ee2" },
+  SolutionBox: { badge: "text-white", badgeBg: "#e31e24" },
+  Invid:       { badge: "text-white", badgeBg: "#009ee2" },
 };
 
 export const ProductModal = ({ product, onClose }) => {

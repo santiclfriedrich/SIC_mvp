@@ -11,6 +11,7 @@ import { fetchProductsFromCorcisa, isCorcisaCacheWarm } from "@/lib/services/cor
 import { fetchProductsFromNucleo, isNucleoCacheWarm } from "@/lib/services/nucleoAPI";
 import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts, isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
 import { fetchProductsFromInvid, fetchProductBySkuFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
+import { fetchProductsFromSolutionbox, fetchProductBySkuFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
 
 // Models
 import {
@@ -21,6 +22,7 @@ import {
   formatPcartsProducts,
   formatPcartsSingle,
   formatInvidProducts,
+  formatSolutionboxProducts,
 } from "@/lib/models";
 
 // ---------------------------------------------------------------------------
@@ -40,7 +42,8 @@ const PROVIDER_TIMEOUTS = {
   Corcisa: { warmMs: 2500, coldMs: 20000 },
   Nucleo:  { warmMs: 2500, coldMs: 20000 },
   PCArts:  { warmMs: 2500, coldMs: 15000 },
-  Invid:   { warmMs: 2500, coldMs: 45000 },
+  Invid:       { warmMs: 2500, coldMs: 45000 },
+  SolutionBox: { warmMs: 2500, coldMs: 35000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -125,30 +128,32 @@ export async function getAllProducts({ q = "" } = {}) {
     console.log(`🔎 Buscando productos: "${query}" ...`);
     const start = Date.now();
 
-    const [elit, masnet, corcisa, nucleo, pcarts, invid] = await Promise.allSettled([
-      fetchProvider("Elit",    () => isElitCacheWarm(),         () => fetchProductsFromElit(query)),
-      fetchProvider("Masnet",  () => isMasnetCacheWarm(query),  () => fetchProductsFromMasnet(query)),
-      fetchProvider("Corcisa", () => isCorcisaCacheWarm(),      () => fetchProductsFromCorcisa(query)),
-      fetchProvider("Nucleo",  () => isNucleoCacheWarm(),       () => fetchProductsFromNucleo(query)),
-      fetchProvider("PCArts",  () => isPcartsCacheWarm(),       () => fetchProductsFromPcarts(query)),
-      fetchProvider("Invid",   () => isInvidCacheWarm(),        () => fetchProductsFromInvid(query)),
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox] = await Promise.allSettled([
+      fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductsFromElit(query)),
+      fetchProvider("Masnet",      () => isMasnetCacheWarm(query),     () => fetchProductsFromMasnet(query)),
+      fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(query)),
+      fetchProvider("Nucleo",      () => isNucleoCacheWarm(),          () => fetchProductsFromNucleo(query)),
+      fetchProvider("PCArts",      () => isPcartsCacheWarm(),          () => fetchProductsFromPcarts(query)),
+      fetchProvider("Invid",       () => isInvidCacheWarm(),           () => fetchProductsFromInvid(query)),
+      fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductsFromSolutionbox(query)),
     ]);
 
-    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid };
+    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid, SolutionBox: solutionbox };
     const failed      = Object.entries(providerMap).filter(([, r]) => r.status === "rejected").map(([n]) => n);
 
     if (failed.length) {
       console.warn(`⚠️ Proveedores no disponibles en esta request: ${failed.join(", ")}`);
     }
 
-    const elitData    = elit.status    === "fulfilled" ? formatElitProducts(elit.value)       : [];
-    const masnetData  = masnet.status  === "fulfilled" ? formatMasnetProducts(masnet.value)   : [];
-    const corcisaData = corcisa.status === "fulfilled" ? formatCorcisaProducts(corcisa.value) : [];
-    const nucleoData  = nucleo.status  === "fulfilled" ? formatNucleoProducts(nucleo.value)   : [];
-    const pcartsData  = pcarts.status  === "fulfilled" ? formatPcartsProducts(pcarts.value)   : [];
-    const invidData   = invid.status   === "fulfilled" ? formatInvidProducts(invid.value)     : [];
+    const elitData        = elit.status        === "fulfilled" ? formatElitProducts(elit.value)               : [];
+    const masnetData      = masnet.status      === "fulfilled" ? formatMasnetProducts(masnet.value)           : [];
+    const corcisaData     = corcisa.status     === "fulfilled" ? formatCorcisaProducts(corcisa.value)         : [];
+    const nucleoData      = nucleo.status      === "fulfilled" ? formatNucleoProducts(nucleo.value)           : [];
+    const pcartsData      = pcarts.status      === "fulfilled" ? formatPcartsProducts(pcarts.value)           : [];
+    const invidData       = invid.status       === "fulfilled" ? formatInvidProducts(invid.value)             : [];
+    const solutionboxData = solutionbox.status === "fulfilled" ? formatSolutionboxProducts(solutionbox.value) : [];
 
-    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData);
+    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData);
     allProducts = allProducts.map(cleanMergedProduct);
 
     if (query) {
@@ -175,7 +180,7 @@ export async function getAllProducts({ q = "" } = {}) {
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(
-      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${6 - failed.length}/6 proveedores`
+      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${7 - failed.length}/7 proveedores`
     );
 
     return allProducts;
@@ -195,17 +200,18 @@ export async function getProductBySku({ sku = "" } = {}) {
   const SKU = skuTrim.toUpperCase();
 
   try {
-    const [elit, masnet, corcisa, nucleo, pcarts, invid] = await Promise.allSettled([
-      fetchProvider("Elit",    () => isElitCacheWarm(),         () => fetchProductBySkuFromElit(skuTrim)),
-      fetchProvider("Masnet",  () => isMasnetCacheWarm(skuTrim),() => fetchProductBySkuFromMasnet(skuTrim)),
-      fetchProvider("Corcisa", () => isCorcisaCacheWarm(),      () => fetchProductsFromCorcisa(skuTrim)),
-      fetchProvider("Nucleo",  () => isNucleoCacheWarm(),       () => fetchProductsFromNucleo(skuTrim)),
-      fetchProvider("PCArts",  () => isPcartsCacheWarm(),       () => fetchProductBySkuFromPcarts(skuTrim)),
-      fetchProvider("Invid",   () => isInvidCacheWarm(),        () => fetchProductBySkuFromInvid(skuTrim)),
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox] = await Promise.allSettled([
+      fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductBySkuFromElit(skuTrim)),
+      fetchProvider("Masnet",      () => isMasnetCacheWarm(skuTrim),   () => fetchProductBySkuFromMasnet(skuTrim)),
+      fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(skuTrim)),
+      fetchProvider("Nucleo",      () => isNucleoCacheWarm(),          () => fetchProductsFromNucleo(skuTrim)),
+      fetchProvider("PCArts",      () => isPcartsCacheWarm(),          () => fetchProductBySkuFromPcarts(skuTrim)),
+      fetchProvider("Invid",       () => isInvidCacheWarm(),           () => fetchProductBySkuFromInvid(skuTrim)),
+      fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductBySkuFromSolutionbox(skuTrim)),
     ]);
 
-    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid]
-      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid"][i] }))
+    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox]
+      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid", "SolutionBox"][i] }))
       .filter(({ r }) => r.status === "rejected")
       .map(({ name }) => name);
 
@@ -239,7 +245,12 @@ export async function getProductBySku({ sku = "" } = {}) {
     const invidData =
       invid.status === "fulfilled" && invid.value ? formatInvidProducts([invid.value]) : [];
 
-    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData).map(
+    const solutionboxData =
+      solutionbox.status === "fulfilled" && solutionbox.value
+        ? formatSolutionboxProducts([solutionbox.value])
+        : [];
+
+    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData).map(
       cleanMergedProduct
     );
   } catch (error) {
