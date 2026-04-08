@@ -21,7 +21,7 @@ const PAGE_SIZE         = 100;   // ítems por página (fijo por la API)
 const MAX_PAGES         = 80;    // techo de seguridad (~8000 productos)
 const PAGE_DELAY_MS     = 500;   // pausa entre requests para respetar rate limit
 const RETRY_429_MS      = 3000;  // espera inicial al recibir 429
-const MAX_RETRIES       = 2;     // reintentos máximos por página en 429
+const MAX_RETRIES       = 3;     // reintentos máximos por página en 429
 const FAILURE_COOLDOWN  = 5 * 60 * 1000; // 5 min sin reintentar tras falla 429
 
 // ── In-memory state ───────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ async function getInvidToken() {
   const res = await axios.post(
     `${BASE_URL}/api/v1/auth.php`,
     { username: creds.username, password: creds.password },
-    { headers: { "Content-Type": "application/json" }, timeout: 10000 }
+    { headers: { "Content-Type": "application/json" }, timeout: 20000 }
   );
 
   const token = res.data?.access_token ?? null;
@@ -104,7 +104,7 @@ async function fetchInvidPage(token, offsetOrUrl, attempt = 1) {
 
   const res = await axios.get(url, {
     headers: { Authorization: `Bearer ${token}` },
-    timeout: 15000,
+    timeout: 45000,
     validateStatus: (s) => s < 500,
   });
 
