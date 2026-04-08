@@ -42,7 +42,7 @@ export function formatAirIntraProducts(rawProducts) {
         stockLevel: stockLevel(stockTotal),
         stockTotal,
         link:       "",
-        image:      null,
+        image:      "/air-c.jpg",
         provider:   "AirIntra",
       };
     })
