@@ -59,24 +59,16 @@ function normalizeText(s) {
     .replace(/\s+/g, " ");
 }
 
-// ── Token (GET login, cache en memoria 12h) ───────────────────────────────────
+// ── Token (GET login, cache en memoria 1h) ────────────────────────────────────
+// El token de AirIntra expira cada ~24h. Siempre obtenemos uno fresco via login.
 async function getAirIntraToken() {
   const now = Date.now();
 
-  // 1) Usar token estático de env si está configurado
-  const staticToken = process.env.AIR_INTRA_TOKEN;
-  if (staticToken && !tokenCache.token) {
-    tokenCache = { ts: now, token: staticToken.trim() };
-    console.log("🔵 [AirIntra] Usando token estático de env");
-    return tokenCache.token;
-  }
-
-  // 2) Cache en memoria
+  // Cache en memoria
   if (tokenCache.token && now - tokenCache.ts < TOKEN_TTL_MS) {
     return tokenCache.token;
   }
 
-  // 3) Login
   const creds = getCreds();
   if (!creds) return null;
 
