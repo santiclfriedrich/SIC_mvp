@@ -58,6 +58,7 @@ export function mergeResults(...lists) {
         iva:        p.iva,
         stockTotal: p.stockTotal ?? p.stock ?? 0,
         link:       p.link,
+        image:      p.image ?? null,
       });
     }
   }

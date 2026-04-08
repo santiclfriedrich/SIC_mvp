@@ -16,6 +16,19 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
   const hasComparison =
     Array.isArray(product.providers) && product.providers.length > 1;
 
+  // 🖼 Imagen: prioridad → imagen real del mejor precio → imagen real de cualquier proveedor → imagen default
+  function isRealImage(img) {
+    return typeof img === "string" && img.startsWith("http");
+  }
+  const displayImage = (() => {
+    if (isRealImage(best?.image)) return best.image;
+    if (Array.isArray(product.providers)) {
+      const found = product.providers.find((p) => isRealImage(p.image));
+      if (found) return found.image;
+    }
+    return product.image ?? null;
+  })();
+
   // 🎨 Estilos por proveedor (SIN CAMBIOS)
   const providerStyles = {
     Elit: {
@@ -116,9 +129,9 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
   className="relative h-40 w-full rounded-t-2xl border-b"
   style={{ backgroundColor: style.imageBg ?? "#ffffff" }}
 >
-  {product.image ? (
+  {displayImage ? (
     <SmartImage
-      src={product.image}
+      src={displayImage}
       alt={product.name}
       fill
       sizes="(max-width: 768px) 100vw, 25vw"
