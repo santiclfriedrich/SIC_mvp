@@ -36,7 +36,7 @@ export async function GET() {
     try {
       const pageRes = await axios.post(
         `${BASE_URL}/articulos?page=0`,
-        { rubro: "", grupo: 0, categoria: 0, estado: "T", texto: "", orden: "DA", stock: "T", codiart: "" },
+        {},
         {
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           timeout: 20000,

@@ -102,7 +102,7 @@ async function fetchAirIntraPage(token, page, attempt = 1) {
   try {
     const res = await axios.post(
       `${BASE_URL}/articulos?page=${page}`,
-      { rubro: "", grupo: 0, categoria: 0, estado: "T", texto: "", orden: "DA", stock: "T", codiart: "" },
+      {},
       {
         headers: {
           Authorization: `Bearer ${token}`,
