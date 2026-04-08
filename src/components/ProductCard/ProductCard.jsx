@@ -42,6 +42,7 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       badge: "text-white",
       hoverBorder: "hover:border-[#e31e24]",
       badgeBg: "#e31e24",
+      imageBg: "#2b2d32",
     },
     Invid: {
       badge: "text-white",
@@ -111,7 +112,10 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       </div>
 
 {/* 🖼 Imagen */}
-<div className="relative h-40 w-full bg-white rounded-t-2xl border-b">
+<div
+  className="relative h-40 w-full rounded-t-2xl border-b"
+  style={{ backgroundColor: style.imageBg ?? "#ffffff" }}
+>
   {product.image ? (
     <SmartImage
       src={product.image}
