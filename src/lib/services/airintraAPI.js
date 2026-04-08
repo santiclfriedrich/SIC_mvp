@@ -172,13 +172,7 @@ async function fetchAirIntraCatalogAll(token) {
 
 // ── Filtrar sin stock ─────────────────────────────────────────────────────────
 function calcStock(p) {
-  return (
-    (p.ros?.disponible ?? 0) +
-    (p.mza?.disponible ?? 0) +
-    (p.cba?.disponible ?? 0) +
-    (p.lug?.disponible ?? 0) +
-    (p.air?.disponible ?? 0)
-  );
+  return p.air?.disponible ?? 0; // "General" = stock real
 }
 
 // ── Sync bloqueante para cron ─────────────────────────────────────────────────

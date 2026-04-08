@@ -5,13 +5,7 @@
 // Moneda "DOL" = USD.
 
 function calcStockTotal(p) {
-  return (
-    (p.ros?.disponible ?? 0) +
-    (p.mza?.disponible ?? 0) +
-    (p.cba?.disponible ?? 0) +
-    (p.lug?.disponible ?? 0) +
-    (p.air?.disponible ?? 0)
-  );
+  return p.air?.disponible ?? 0; // "General" = stock real
 }
 
 function stockLevel(total) {
