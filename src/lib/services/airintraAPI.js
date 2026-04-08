@@ -82,7 +82,7 @@ async function getAirIntraToken() {
 
   console.log("🔵 [AirIntra] Obteniendo token via login...");
 
-  const res = await axios.get(`${BASE_URL}/?q=login`, {
+  const res = await axios.get(`${BASE_URL}/login`, {
     params: { user: creds.username, pass: creds.password },
     timeout: 15000,
   });
@@ -101,8 +101,8 @@ async function getAirIntraToken() {
 async function fetchAirIntraPage(token, page, attempt = 1) {
   try {
     const res = await axios.post(
-      `${BASE_URL}/?q=articulos&page=${page}`,
-      { estado: "T", orden: "DA" },
+      `${BASE_URL}/articulos?page=${page}`,
+      { rubro: "", grupo: 0, categoria: 0, estado: "T", texto: "", orden: "DA", stock: "T", codiart: "" },
       {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,6 +110,16 @@ async function fetchAirIntraPage(token, page, attempt = 1) {
         },
         timeout: 45000,
         validateStatus: (s) => s < 500,
+        transformResponse: [(raw) => {
+          // La API puede incluir PHP notices antes del JSON — los descartamos
+          try {
+            const jsonStart = raw.indexOf("[");
+            if (jsonStart > 0) return JSON.parse(raw.slice(jsonStart));
+            return JSON.parse(raw);
+          } catch {
+            return [];
+          }
+        }],
       }
     );
 
