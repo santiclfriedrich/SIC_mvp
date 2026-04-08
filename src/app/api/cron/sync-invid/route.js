@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { syncInvidCatalogToRedis } from "@/lib/services/invidAPI";
 
 export const runtime     = "nodejs";
-export const maxDuration = 300; // 5 minutos — necesario para catálogos grandes
+export const maxDuration = 60; // máximo en Vercel Hobby plan
 
 export async function GET(request) {
   // Verificar secret (Vercel lo envía como header Authorization: Bearer <secret>)
