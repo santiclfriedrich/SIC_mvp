@@ -51,9 +51,15 @@ export const ProductModal = ({ product, onClose }) => {
 
   if (!product || !best) return null;
 
-  const imageUrl =
-    product.image ||
-    "https://via.placeholder.com/400x300?text=Sin+Imagen";
+  function isRealImage(img) {
+    return typeof img === "string" && img.startsWith("http");
+  }
+  const imageUrl = (() => {
+    if (isRealImage(best?.image)) return best.image;
+    const found = providers.find((p) => isRealImage(p.image));
+    if (found) return found.image;
+    return best?.image ?? product.image ?? null;
+  })();
 
   const bestStyle =
     PROVIDER_STYLES[best.provider] || {

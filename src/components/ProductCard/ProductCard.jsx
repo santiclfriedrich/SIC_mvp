@@ -26,7 +26,7 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       const found = product.providers.find((p) => isRealImage(p.image));
       if (found) return found.image;
     }
-    return product.image ?? null;
+    return best?.image ?? product.image ?? null;
   })();
 
   // 🎨 Estilos por proveedor (SIN CAMBIOS)
