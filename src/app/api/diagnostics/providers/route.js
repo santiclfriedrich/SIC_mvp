@@ -13,6 +13,7 @@ import { fetchProductsFromNucleo,  isNucleoCacheWarm } from "@/lib/services/nucl
 import { fetchProductsFromPcarts,  isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
 import { fetchProductsFromInvid,       isInvidCacheWarm }       from "@/lib/services/invidAPI";
 import { fetchProductsFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
+import { fetchProductsFromMicroglobal, isMicroglobalCacheWarm } from "@/lib/services/microglobalAPI";
 
 import { cacheGet, cacheSet }  from "@/lib/cache/redisCache";
 
@@ -54,6 +55,11 @@ const PROVIDERS = (q) => [
     name:     "SolutionBox",
     fn:       () => fetchProductsFromSolutionbox(q),
     isWarm:   () => isSolutionboxCacheWarm(),
+  },
+  {
+    name:     "Microglobal",
+    fn:       () => fetchProductsFromMicroglobal(q),
+    isWarm:   () => isMicroglobalCacheWarm(),
   },
 ];
 

@@ -13,6 +13,7 @@ import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts, isPcartsCacheWarm
 import { fetchProductsFromInvid, fetchProductBySkuFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
 import { fetchProductsFromSolutionbox, fetchProductBySkuFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
 import { fetchProductsFromAirIntra, fetchProductBySkuFromAirIntra, isAirIntraCacheWarm } from "@/lib/services/airintraAPI";
+import { fetchProductsFromMicroglobal, fetchProductBySkuFromMicroglobal, isMicroglobalCacheWarm } from "@/lib/services/microglobalAPI";
 
 // Models
 import {
@@ -25,6 +26,7 @@ import {
   formatInvidProducts,
   formatSolutionboxProducts,
   formatAirIntraProducts,
+  formatMicroglobalProducts,
 } from "@/lib/models";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +49,7 @@ const PROVIDER_TIMEOUTS = {
   Invid:       { warmMs: 2500, coldMs: 45000 },
   SolutionBox: { warmMs: 2500, coldMs: 35000 },
   AirIntra:    { warmMs: 2500, coldMs: 30000 },
+  Microglobal: { warmMs: 2500, coldMs: 35000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -131,7 +134,7 @@ export async function getAllProducts({ q = "" } = {}) {
     console.log(`🔎 Buscando productos: "${query}" ...`);
     const start = Date.now();
 
-    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra] = await Promise.allSettled([
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal] = await Promise.allSettled([
       fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductsFromElit(query)),
       fetchProvider("Masnet",      () => isMasnetCacheWarm(query),     () => fetchProductsFromMasnet(query)),
       fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(query)),
@@ -140,25 +143,27 @@ export async function getAllProducts({ q = "" } = {}) {
       fetchProvider("Invid",       () => isInvidCacheWarm(),           () => fetchProductsFromInvid(query)),
       fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductsFromSolutionbox(query)),
       fetchProvider("AirIntra",    () => isAirIntraCacheWarm(),        () => fetchProductsFromAirIntra(query)),
+      fetchProvider("Microglobal", () => isMicroglobalCacheWarm(),     () => fetchProductsFromMicroglobal(query)),
     ]);
 
-    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid, SolutionBox: solutionbox, AirIntra: airintra };
+    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid, SolutionBox: solutionbox, AirIntra: airintra, Microglobal: microglobal };
     const failed      = Object.entries(providerMap).filter(([, r]) => r.status === "rejected").map(([n]) => n);
 
     if (failed.length) {
       console.warn(`⚠️ Proveedores no disponibles en esta request: ${failed.join(", ")}`);
     }
 
-    const elitData        = elit.status        === "fulfilled" ? formatElitProducts(elit.value)               : [];
-    const masnetData      = masnet.status      === "fulfilled" ? formatMasnetProducts(masnet.value)           : [];
-    const corcisaData     = corcisa.status     === "fulfilled" ? formatCorcisaProducts(corcisa.value)         : [];
-    const nucleoData      = nucleo.status      === "fulfilled" ? formatNucleoProducts(nucleo.value)           : [];
-    const pcartsData      = pcarts.status      === "fulfilled" ? formatPcartsProducts(pcarts.value)           : [];
-    const invidData       = invid.status       === "fulfilled" ? formatInvidProducts(invid.value)             : [];
-    const solutionboxData = solutionbox.status === "fulfilled" ? formatSolutionboxProducts(solutionbox.value) : [];
-    const airintraData    = airintra.status    === "fulfilled" ? formatAirIntraProducts(airintra.value)       : [];
+    const elitData        = elit.status        === "fulfilled" ? formatElitProducts(elit.value)                   : [];
+    const masnetData      = masnet.status      === "fulfilled" ? formatMasnetProducts(masnet.value)               : [];
+    const corcisaData     = corcisa.status     === "fulfilled" ? formatCorcisaProducts(corcisa.value)             : [];
+    const nucleoData      = nucleo.status      === "fulfilled" ? formatNucleoProducts(nucleo.value)               : [];
+    const pcartsData      = pcarts.status      === "fulfilled" ? formatPcartsProducts(pcarts.value)               : [];
+    const invidData       = invid.status       === "fulfilled" ? formatInvidProducts(invid.value)                 : [];
+    const solutionboxData = solutionbox.status === "fulfilled" ? formatSolutionboxProducts(solutionbox.value)     : [];
+    const airintraData    = airintra.status    === "fulfilled" ? formatAirIntraProducts(airintra.value)           : [];
+    const microglobalData = microglobal.status === "fulfilled" ? formatMicroglobalProducts(microglobal.value)     : [];
 
-    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData);
+    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData);
     allProducts = allProducts.map(cleanMergedProduct);
 
     if (query) {
@@ -185,7 +190,7 @@ export async function getAllProducts({ q = "" } = {}) {
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(
-      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${8 - failed.length}/8 proveedores`
+      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${9 - failed.length}/9 proveedores`
     );
 
     return allProducts;
@@ -205,7 +210,7 @@ export async function getProductBySku({ sku = "" } = {}) {
   const SKU = skuTrim.toUpperCase();
 
   try {
-    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra] = await Promise.allSettled([
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal] = await Promise.allSettled([
       fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductBySkuFromElit(skuTrim)),
       fetchProvider("Masnet",      () => isMasnetCacheWarm(skuTrim),   () => fetchProductBySkuFromMasnet(skuTrim)),
       fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(skuTrim)),
@@ -214,10 +219,11 @@ export async function getProductBySku({ sku = "" } = {}) {
       fetchProvider("Invid",       () => isInvidCacheWarm(),           () => fetchProductBySkuFromInvid(skuTrim)),
       fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductBySkuFromSolutionbox(skuTrim)),
       fetchProvider("AirIntra",    () => isAirIntraCacheWarm(),        () => fetchProductBySkuFromAirIntra(skuTrim)),
+      fetchProvider("Microglobal", () => isMicroglobalCacheWarm(),     () => fetchProductBySkuFromMicroglobal(skuTrim)),
     ]);
 
-    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra]
-      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid", "SolutionBox", "AirIntra"][i] }))
+    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal]
+      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid", "SolutionBox", "AirIntra", "Microglobal"][i] }))
       .filter(({ r }) => r.status === "rejected")
       .map(({ name }) => name);
 
@@ -261,7 +267,12 @@ export async function getProductBySku({ sku = "" } = {}) {
         ? formatAirIntraProducts([airintra.value])
         : [];
 
-    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData).map(
+    const microglobalData =
+      microglobal.status === "fulfilled" && microglobal.value
+        ? formatMicroglobalProducts([microglobal.value])
+        : [];
+
+    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData).map(
       cleanMergedProduct
     );
   } catch (error) {
