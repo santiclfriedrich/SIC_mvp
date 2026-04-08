@@ -53,6 +53,11 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       hoverBorder: "hover:border-[#1B3A6B]",
       badgeBg: "#1B3A6B",
     },
+    Microglobal: {
+      badge: "text-white",
+      hoverBorder: "hover:border-[#1a7f37]",
+      badgeBg: "#1a7f37",
+    },
   };
 
   const style =

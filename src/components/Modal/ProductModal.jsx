@@ -25,6 +25,7 @@ const PROVIDER_STYLES = {
   SolutionBox: { badge: "text-white", badgeBg: "#e31e24" },
   Invid:       { badge: "text-white", badgeBg: "#009ee2" },
   AIR:         { badge: "text-white", badgeBg: "#1B3A6B" },
+  Microglobal: { badge: "text-white", badgeBg: "#1a7f37" },
 };
 
 export const ProductModal = ({ product, onClose }) => {
