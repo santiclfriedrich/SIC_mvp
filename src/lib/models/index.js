@@ -6,3 +6,4 @@ export { formatNucleoProducts } from "./nucleoModel.js";
 export { formatPcartsProducts, formatPcartsSingle } from "./pcartsModel.js";
 export { formatInvidProducts } from "./invidModel.js";
 export { formatSolutionboxProducts } from "./solutionboxModel.js";
+export { formatAirIntraProducts } from "./airintraModel.js";

@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-invid",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-airintra",
+      "schedule": "0 1 * * *"
     }
   ]
 }

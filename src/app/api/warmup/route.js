@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { fetchProductsFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
+import { fetchProductsFromAirIntra, isAirIntraCacheWarm } from "@/lib/services/airintraAPI";
 
 export const runtime    = "nodejs";
 export const maxDuration = 10;
@@ -20,6 +21,13 @@ export async function POST() {
     status.invid = "warming";
   } else {
     status.invid = "already_warm";
+  }
+
+  if (!isAirIntraCacheWarm()) {
+    fetchProductsFromAirIntra("").catch(() => {});
+    status.airintra = "warming";
+  } else {
+    status.airintra = "already_warm";
   }
 
   return NextResponse.json({ ok: true, status }, { status: 200 });
