@@ -19,7 +19,7 @@ const CATALOG_REDIS_TTL = 24 * 60 * 60;       // 24h en Redis (segundos)
 const TOKEN_TTL_MS      = 5.5 * 60 * 60 * 1000; // 5.5h (token válido 6h)
 const PAGE_SIZE         = 100;   // ítems por página (fijo por la API)
 const MAX_PAGES         = 80;    // techo de seguridad (~8000 productos)
-const PAGE_DELAY_MS     = 500;   // pausa entre requests para respetar rate limit
+const PAGE_DELAY_MS     = 150;   // pausa entre requests para respetar rate limit
 const RETRY_429_MS      = 3000;  // espera inicial al recibir 429
 const MAX_RETRIES       = 3;     // reintentos máximos por página en 429
 const FAILURE_COOLDOWN  = 5 * 60 * 1000; // 5 min sin reintentar tras falla 429
@@ -245,6 +245,32 @@ async function getInvidCatalogCached() {
 
   // No await — devolvemos [] de inmediato mientras descarga en background
   return [];
+}
+
+// ── Sync bloqueante para cron (descarga completa → Redis, sin fire-and-forget) ─
+// Pensado para llamarse desde /api/cron/sync-invid con maxDuration alto.
+// Retorna { ok, total, withStock } o lanza un error.
+export async function syncInvidCatalogToRedis() {
+  const token = await getInvidToken();
+  if (!token) throw new Error("No se pudo obtener token JWT de INVID");
+
+  const rawItems = await fetchInvidCatalogAll(token);
+  if (!rawItems.length) throw new Error("Catálogo vacío — verificar credenciales INVID");
+
+  const items = rawItems.filter((p) => {
+    const s = String(p.STOCK_STATUS ?? "").toLowerCase();
+    return !s.includes("sin stock") && !s.includes("agotado") && s !== "0" && s !== "";
+  });
+  console.log(`🔵 [Invid sync] con stock: ${items.length}/${rawItems.length}`);
+
+  const forRedis = items.map(({ DESCRIPTION, TAGS, IVA_VALUE,
+    INTERNAL_TAX_PERCENT, INTERNAL_TAX_VALUE, WEIGHT, DIMENSIONS, ...keep }) => keep);
+
+  await redisCacheSet(CATALOG_REDIS_KEY, forRedis, CATALOG_REDIS_TTL);
+  catalogCache = { ts: Date.now(), items };
+
+  console.log(`✅ [Invid sync] catálogo en Redis: ${items.length} productos`);
+  return { ok: true, total: rawItems.length, withStock: items.length };
 }
 
 // ── Warm check ────────────────────────────────────────────────────────────────
