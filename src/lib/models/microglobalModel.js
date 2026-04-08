@@ -28,7 +28,7 @@ export function formatMicroglobalProducts(rawProducts) {
         stockLevel: stock > 20 ? "disponible" : stock > 0 ? "limitado" : "sin stock",
         stockTotal: stock,
         link:       "",
-        image:      "/micro.jpg",
+        image:      "/microg.jpg",
         provider:   "Microglobal",
       };
     })
