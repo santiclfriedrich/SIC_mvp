@@ -43,7 +43,7 @@ export function formatAirIntraProducts(rawProducts) {
         stockTotal,
         link:       "",
         image:      "/air-c.jpg",
-        provider:   "AirIntra",
+        provider:   "AIR",
       };
     })
     .filter(Boolean);

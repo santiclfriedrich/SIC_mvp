@@ -48,6 +48,11 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       hoverBorder: "hover:border-[#009ee2]",
       badgeBg: "#009ee2",
     },
+    AIR: {
+      badge: "text-white",
+      hoverBorder: "hover:border-[#1B3A6B]",
+      badgeBg: "#1B3A6B",
+    },
   };
 
   const style =

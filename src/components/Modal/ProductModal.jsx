@@ -24,6 +24,7 @@ const PROVIDER_STYLES = {
   Corcisa: { badge: "bg-sky-100 text-sky-800" },
   SolutionBox: { badge: "text-white", badgeBg: "#e31e24" },
   Invid:       { badge: "text-white", badgeBg: "#009ee2" },
+  AIR:         { badge: "text-white", badgeBg: "#1B3A6B" },
 };
 
 export const ProductModal = ({ product, onClose }) => {
