@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/sync-microglobal",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/sync-distecna",
+      "schedule": "0 3 * * *"
     }
   ]
 }

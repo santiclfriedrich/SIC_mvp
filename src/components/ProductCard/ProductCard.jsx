@@ -72,6 +72,11 @@ const stock = Number(best.stockTotal ?? best.stock ?? product.stockTotal ?? prod
       hoverBorder: "hover:border-[#1a7f37]",
       badgeBg: "#1a7f37",
     },
+    Distecna: {
+      badge: "text-white",
+      hoverBorder: "hover:border-[#0d9488]",
+      badgeBg: "#0d9488",
+    },
   };
 
   const style =

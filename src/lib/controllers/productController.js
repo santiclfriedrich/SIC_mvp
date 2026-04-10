@@ -14,6 +14,7 @@ import { fetchProductsFromInvid, fetchProductBySkuFromInvid, isInvidCacheWarm } 
 import { fetchProductsFromSolutionbox, fetchProductBySkuFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
 import { fetchProductsFromAirIntra, fetchProductBySkuFromAirIntra, isAirIntraCacheWarm } from "@/lib/services/airintraAPI";
 import { fetchProductsFromMicroglobal, fetchProductBySkuFromMicroglobal, isMicroglobalCacheWarm } from "@/lib/services/microglobalAPI";
+import { fetchProductsFromDistecna, fetchProductBySkuFromDistecna, isDistecnaCacheWarm } from "@/lib/services/distecnaAPI";
 
 // Models
 import {
@@ -27,6 +28,7 @@ import {
   formatSolutionboxProducts,
   formatAirIntraProducts,
   formatMicroglobalProducts,
+  formatDistecnaProducts,
 } from "@/lib/models";
 
 // ---------------------------------------------------------------------------
@@ -50,6 +52,7 @@ const PROVIDER_TIMEOUTS = {
   SolutionBox: { warmMs: 2500, coldMs: 35000 },
   AirIntra:    { warmMs: 2500, coldMs: 30000 },
   Microglobal: { warmMs: 2500, coldMs: 35000 },
+  Distecna:    { warmMs: 2500, coldMs: 30000 },
 };
 
 // ---------------------------------------------------------------------------
@@ -134,7 +137,7 @@ export async function getAllProducts({ q = "" } = {}) {
     console.log(`🔎 Buscando productos: "${query}" ...`);
     const start = Date.now();
 
-    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal] = await Promise.allSettled([
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal, distecna] = await Promise.allSettled([
       fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductsFromElit(query)),
       fetchProvider("Masnet",      () => isMasnetCacheWarm(query),     () => fetchProductsFromMasnet(query)),
       fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(query)),
@@ -144,9 +147,10 @@ export async function getAllProducts({ q = "" } = {}) {
       fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductsFromSolutionbox(query)),
       fetchProvider("AirIntra",    () => isAirIntraCacheWarm(),        () => fetchProductsFromAirIntra(query)),
       fetchProvider("Microglobal", () => isMicroglobalCacheWarm(),     () => fetchProductsFromMicroglobal(query)),
+      fetchProvider("Distecna",    () => isDistecnaCacheWarm(),        () => fetchProductsFromDistecna(query)),
     ]);
 
-    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid, SolutionBox: solutionbox, AirIntra: airintra, Microglobal: microglobal };
+    const providerMap = { Elit: elit, Masnet: masnet, Corcisa: corcisa, Nucleo: nucleo, PCArts: pcarts, Invid: invid, SolutionBox: solutionbox, AirIntra: airintra, Microglobal: microglobal, Distecna: distecna };
     const failed      = Object.entries(providerMap).filter(([, r]) => r.status === "rejected").map(([n]) => n);
 
     if (failed.length) {
@@ -162,8 +166,9 @@ export async function getAllProducts({ q = "" } = {}) {
     const solutionboxData = solutionbox.status === "fulfilled" ? formatSolutionboxProducts(solutionbox.value)     : [];
     const airintraData    = airintra.status    === "fulfilled" ? formatAirIntraProducts(airintra.value)           : [];
     const microglobalData = microglobal.status === "fulfilled" ? formatMicroglobalProducts(microglobal.value)     : [];
+    const distecnaData    = distecna.status    === "fulfilled" ? formatDistecnaProducts(distecna.value)           : [];
 
-    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData);
+    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData, distecnaData);
     allProducts = allProducts.map(cleanMergedProduct);
 
     if (query) {
@@ -190,7 +195,7 @@ export async function getAllProducts({ q = "" } = {}) {
 
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(
-      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${9 - failed.length}/9 proveedores`
+      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${10 - failed.length}/10 proveedores`
     );
 
     return allProducts;
@@ -210,7 +215,7 @@ export async function getProductBySku({ sku = "" } = {}) {
   const SKU = skuTrim.toUpperCase();
 
   try {
-    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal] = await Promise.allSettled([
+    const [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal, distecna] = await Promise.allSettled([
       fetchProvider("Elit",        () => isElitCacheWarm(),            () => fetchProductBySkuFromElit(skuTrim)),
       fetchProvider("Masnet",      () => isMasnetCacheWarm(skuTrim),   () => fetchProductBySkuFromMasnet(skuTrim)),
       fetchProvider("Corcisa",     () => isCorcisaCacheWarm(),         () => fetchProductsFromCorcisa(skuTrim)),
@@ -220,10 +225,11 @@ export async function getProductBySku({ sku = "" } = {}) {
       fetchProvider("SolutionBox", () => isSolutionboxCacheWarm(),     () => fetchProductBySkuFromSolutionbox(skuTrim)),
       fetchProvider("AirIntra",    () => isAirIntraCacheWarm(),        () => fetchProductBySkuFromAirIntra(skuTrim)),
       fetchProvider("Microglobal", () => isMicroglobalCacheWarm(),     () => fetchProductBySkuFromMicroglobal(skuTrim)),
+      fetchProvider("Distecna",    () => isDistecnaCacheWarm(),        () => fetchProductBySkuFromDistecna(skuTrim)),
     ]);
 
-    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal]
-      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid", "SolutionBox", "AirIntra", "Microglobal"][i] }))
+    const failed = [elit, masnet, corcisa, nucleo, pcarts, invid, solutionbox, airintra, microglobal, distecna]
+      .map((r, i) => ({ r, name: ["Elit", "Masnet", "Corcisa", "Nucleo", "PCArts", "Invid", "SolutionBox", "AirIntra", "Microglobal", "Distecna"][i] }))
       .filter(({ r }) => r.status === "rejected")
       .map(({ name }) => name);
 
@@ -272,7 +278,12 @@ export async function getProductBySku({ sku = "" } = {}) {
         ? formatMicroglobalProducts([microglobal.value])
         : [];
 
-    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData).map(
+    const distecnaData =
+      distecna.status === "fulfilled" && distecna.value
+        ? formatDistecnaProducts([distecna.value])
+        : [];
+
+    return mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData, distecnaData).map(
       cleanMergedProduct
     );
   } catch (error) {

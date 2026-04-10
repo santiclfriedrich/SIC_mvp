@@ -10,6 +10,8 @@ export default function SmartImage({
   className,
   loading,
 }) {
+  if (!src) return null;
+
   const isCorcisa =
     typeof src === "string" && src.includes("corcisa.com.ar");
 

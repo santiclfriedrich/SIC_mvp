@@ -26,6 +26,7 @@ const PROVIDER_STYLES = {
   Invid:       { badge: "text-white", badgeBg: "#009ee2" },
   AIR:         { badge: "text-white", badgeBg: "#1B3A6B" },
   Microglobal: { badge: "text-white", badgeBg: "#1a7f37" },
+  Distecna:    { badge: "text-white", badgeBg: "#0d9488" },
 };
 
 export const ProductModal = ({ product, onClose }) => {
@@ -212,13 +213,13 @@ export const ProductModal = ({ product, onClose }) => {
             </div>
 
             <div className="space-y-3 pt-3">
-              {providers.map((p) => {
+              {providers.map((p, i) => {
                 const style = PROVIDER_STYLES[p.provider] || {};
                 const isBest = best.provider === p.provider;
 
                 return (
                   <div
-                    key={p.provider}
+                    key={`${p.provider}-${i}`}
                     className={`flex items-center justify-between gap-4 p-4 rounded-xl border border-gray-100 ${
                       isBest ? "bg-green-50" : "hover:bg-gray-50"
                     }`}
