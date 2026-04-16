@@ -7,6 +7,7 @@ import { ProductModal } from "../../components/Modal/ProductModal";
 import { SearchBar } from "../../components/SearchBar/SearchBar";
 import { SortFilter } from "../../components/SortFilter/SortFilter";
 import { Pagination } from "../../components/Pagination/Pagination";
+import { WhatsNewModal } from "../../components/WhatsNewModal/WhatsNewModal";
 
 import {
   useProductStore,
@@ -200,6 +201,8 @@ function App() {
 
         </div>
       </main>
+
+      <WhatsNewModal />
 
       <ProductModal
         product={selectedProduct}
