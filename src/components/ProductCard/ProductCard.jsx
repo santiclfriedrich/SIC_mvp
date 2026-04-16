@@ -36,6 +36,10 @@ export const ProductCard = ({ product, onClick }) => {
   const iva       = best.iva || product.iva || "IVA";
   const hasComparison = Array.isArray(product.providers) && product.providers.length > 1;
 
+  const PROVIDER_FALLBACKS = {
+    Distecna: "/distecna_logo.svg",
+  };
+
   function isRealImage(img) {
     return typeof img === "string" && img.startsWith("http");
   }
@@ -45,7 +49,7 @@ export const ProductCard = ({ product, onClick }) => {
       const found = product.providers.find((p) => isRealImage(p.image));
       if (found) return found.image;
     }
-    return best?.image ?? product.image ?? null;
+    return best?.image ?? product.image ?? PROVIDER_FALLBACKS[provider] ?? null;
   })();
 
   const style     = PROVIDER_STYLES[provider] || { color: "#9B978F", badge: "bg-gray-50 text-gray-600", imageBg: "#fff" };

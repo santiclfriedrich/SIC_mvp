@@ -1,21 +1,17 @@
-import { Geist, Geist_Mono, Sora } from "next/font/google";
+import { Work_Sans, Geist_Mono } from "next/font/google";
 import Providers from "./providers.jsx";
 import { Header } from "../components/Header/Header.jsx";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const workSans = Work_Sans({
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-work-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const sora = Sora({
-  weight: ["700", "800"],
-  variable: "--font-display",
   subsets: ["latin"],
 });
 
@@ -28,7 +24,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${sora.variable} antialiased`}
+        className={`${workSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <Header />

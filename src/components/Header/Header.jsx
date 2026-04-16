@@ -22,14 +22,7 @@ export const Header = () => {
           </span>
         </div>
 
-        {/* Título central */}
-        <div className="hidden md:block absolute left-1/2 -translate-x-1/2 pointer-events-none">
-          <p className="text-sm font-medium text-white/70 tracking-tight">
-            Comparación de Proveedores
-          </p>
-        </div>
-
-        {/* Usuario */}
+{/* Usuario */}
         <UserMenu />
       </div>
     </header>
