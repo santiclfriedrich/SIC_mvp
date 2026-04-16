@@ -4,28 +4,32 @@ import { UserMenu } from "../UserMenu/UserMenu";
 
 export const Header = () => {
   return (
-    <header className="w-full bg-gradient-to-r from-[#0F172A] to-[#0B3A66] shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-        {/* Logo / Marca */}
+    <header className="w-full bg-[#0D1829] border-b border-white/[0.06] sticky top-0 z-40">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
+
+        {/* Marca */}
         <div className="flex items-center gap-3">
           <Image
             src="/logo-largo.png"
             alt="Argentina Color"
-            width={160}
-            height={32}
-            className="h-8 w-auto invert brightness-0"
+            width={140}
+            height={28}
+            className="h-7 w-auto brightness-0 invert opacity-90"
           />
+          <span className="hidden sm:block h-3.5 w-px bg-white/20" />
+          <span className="hidden sm:block text-[11px] font-medium text-white/40 tracking-widest uppercase">
+            Compras
+          </span>
         </div>
 
-        {/* Título */}
-        <div className="text-center">
-          <p className="text-sm text-blue-200">Compras</p>
-          <h1 className="text-2xl font-semibold text-white">
-            Comparación Proveedores
-          </h1>
+        {/* Título central */}
+        <div className="hidden md:block absolute left-1/2 -translate-x-1/2 pointer-events-none">
+          <p className="text-sm font-medium text-white/70 tracking-tight">
+            Comparación de Proveedores
+          </p>
         </div>
 
-        {/* Usuario / Logout */}
+        {/* Usuario */}
         <UserMenu />
       </div>
     </header>

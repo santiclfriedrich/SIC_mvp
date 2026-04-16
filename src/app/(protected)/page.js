@@ -1,6 +1,5 @@
 "use client";
 
-import { Header } from "../../components/Header/Header";
 import { Footer } from "../../components/Footer/Footer";
 import { LandingPage } from "../../components/LandingPage/LandingPage";
 import { ProductGrid } from "../../components/ProductGrid/ProductGrid";
@@ -24,7 +23,6 @@ function App() {
 
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // Precalentar catálogos lentos (ej: Invid) al cargar la app
   useEffect(() => {
     fetch("/api/warmup", { method: "POST" }).catch(() => {});
   }, []);
@@ -32,11 +30,10 @@ function App() {
   const showResults = hasSearched || loading;
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-  
-
-      <main className="flex-1 px-4 py-8">
+    <div className="min-h-screen flex flex-col bg-[#F2F1EE]">
+      <main className="flex-1 px-4 py-6 sm:py-8">
         <div className="max-w-7xl mx-auto">
+
           {!showResults ? (
             <LandingPage
               searchQuery={query}
@@ -45,13 +42,9 @@ function App() {
             />
           ) : (
             <>
-              {/* Header resultados */}
-              <div className="mb-8 text-center">
-                <h2 className="text-3xl font-bold text-gray-900 mb-6">
-                  Todos tus proveedores, una sola búsqueda
-                </h2>
-
-                <div className="relative max-w-2xl mx-auto">
+              {/* Barra de búsqueda compacta */}
+              <div className="mb-6">
+                <div className="max-w-xl mx-auto mb-3">
                   <SearchBar
                     searchQuery={query}
                     setSearchQuery={setQuery}
@@ -60,35 +53,45 @@ function App() {
                   />
                 </div>
 
-                {loading && (
-                  <p className="mt-4 text-sm text-gray-500">
-                    Buscando en todos los proveedores…
-                  </p>
-                )}
+                {/* Estado de búsqueda */}
+                <div className="text-center">
+                  {loading && (
+                    <p className="text-sm text-[#9B978F] flex items-center justify-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB] animate-ping inline-block" />
+                      Buscando en todos los proveedores…
+                    </p>
+                  )}
 
-                {!loading && hasSearched && products.length > 0 && (
-                  <p className="mt-2 text-sm text-gray-500">
-                    {products.length} {products.length === 1 ? "producto" : "productos"} encontrados para{" "}
-                    <span className="font-medium text-gray-700">&quot;{lastQuery}&quot;</span>
-                  </p>
-                )}
+                  {!loading && hasSearched && products.length > 0 && (
+                    <p className="text-sm text-[#9B978F]">
+                      <span className="font-semibold text-[#1A1917]">{products.length}</span>{" "}
+                      {products.length === 1 ? "producto" : "productos"} para{" "}
+                      <span className="font-medium text-[#1A1917]">"{lastQuery}"</span>
+                    </p>
+                  )}
 
-                {!loading && hasSearched && error && (
-                  <p className="mt-4 text-sm text-red-600">
-                    Error al buscar. Por favor reintentá.
-                  </p>
-                )}
+                  {!loading && hasSearched && error && (
+                    <p className="text-sm text-red-600">
+                      Error al buscar. Por favor reintentá.
+                    </p>
+                  )}
+                </div>
               </div>
 
+              {/* Sin resultados */}
               {!loading && hasSearched && products.length === 0 && !error && (
-                <div className="text-center py-16 text-gray-500">
-                  <p className="text-lg font-medium">Sin resultados para &quot;{lastQuery}&quot;</p>
-                  <p className="text-sm mt-1">
+                <div className="text-center py-20">
+                  <p className="text-4xl mb-4 select-none">🔍</p>
+                  <p className="text-base font-semibold text-[#1A1917] mb-1">
+                    Sin resultados para "{lastQuery}"
+                  </p>
+                  <p className="text-sm text-[#9B978F]">
                     Probá con otro código de producto o nombre.
                   </p>
                 </div>
               )}
 
+              {/* Grid de productos */}
               {products.length > 0 && (
                 <ProductGrid
                   products={products}

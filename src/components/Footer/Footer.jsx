@@ -1,9 +1,12 @@
 export const Footer = () => {
   return (
-    <footer className="w-full bg-gradient-to-r from-[#0F172A] to-[#0B3A66] shadow-inner mt-auto">
-      <div className="max-w-7xl mx-auto px-6 py-5 text-center">
-        <p className="text-sm text-blue-200">
-          © 2025 Argentina Color. Todos los derechos reservados.
+    <footer className="w-full mt-auto border-t border-[#E3E1DC]">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <p className="text-xs text-[#9B978F]">
+          © 2025 Argentina Color
+        </p>
+        <p className="text-xs text-[#C8C5BE]">
+          Comparación de Proveedores
         </p>
       </div>
     </footer>

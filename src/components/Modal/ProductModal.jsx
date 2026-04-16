@@ -9,45 +9,33 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { useState, useMemo } from "react";
-
 import SmartImage from "../SmartImage/SmartImage";
 
-
-/**
- * 🎨 Colores por proveedor
- */
 const PROVIDER_STYLES = {
-  Elit: { badge: "bg-orange-100 text-orange-800" },
-  Nucleo: { badge: "bg-red-100 text-red-800" },
-  PCArts: { badge: "bg-violet-100 text-violet-800" },
-  Masnet: { badge: "bg-blue-100 text-blue-800" },
-  Corcisa: { badge: "bg-sky-100 text-sky-800" },
-  SolutionBox: { badge: "text-white", badgeBg: "#e31e24" },
-  Invid:       { badge: "text-white", badgeBg: "#009ee2" },
-  AIR:         { badge: "text-white", badgeBg: "#1B3A6B" },
-  Microglobal: { badge: "text-white", badgeBg: "#1a7f37" },
-  Distecna:    { badge: "text-white", badgeBg: "#0d9488" },
+  Elit:        { badge: "bg-orange-50 text-orange-700",  color: "#ea6c1a" },
+  Nucleo:      { badge: "bg-red-50 text-red-700",        color: "#dc2626" },
+  PCArts:      { badge: "bg-violet-50 text-violet-700",  color: "#7c3aed" },
+  Masnet:      { badge: "bg-blue-50 text-blue-700",      color: "#2563eb" },
+  Corcisa:     { badge: "bg-sky-50 text-sky-700",        color: "#0ea5e9" },
+  SolutionBox: { badge: "bg-red-600 text-white",         color: "#e31e24" },
+  Invid:       { badge: "text-white",                    color: "#009ee2", badgeBg: "#009ee2" },
+  AIR:         { badge: "text-white",                    color: "#1B3A6B", badgeBg: "#1B3A6B" },
+  Microglobal: { badge: "text-white",                    color: "#1a7f37", badgeBg: "#1a7f37" },
+  Distecna:    { badge: "bg-teal-600 text-white",        color: "#0d9488" },
 };
 
 export const ProductModal = ({ product, onClose }) => {
   const [copied, setCopied] = useState(false);
 
-  /* -------------------- DATA -------------------- */
   const providers = useMemo(() => {
     if (!product) return [];
     return product.providers?.length ? product.providers : [product];
   }, [product]);
 
   const { best, ahorro } = useMemo(() => {
-    if (providers.length < 2) {
-      return { best: providers[0], ahorro: 0 };
-    }
-
+    if (providers.length < 2) return { best: providers[0], ahorro: 0 };
     const sorted = [...providers].sort((a, b) => a.price - b.price);
-    return {
-      best: sorted[0],
-      ahorro: sorted.at(-1).price - sorted[0].price,
-    };
+    return { best: sorted[0], ahorro: sorted.at(-1).price - sorted[0].price };
   }, [providers]);
 
   if (!product || !best) return null;
@@ -62,12 +50,8 @@ export const ProductModal = ({ product, onClose }) => {
     return best?.image ?? product.image ?? null;
   })();
 
-  const bestStyle =
-    PROVIDER_STYLES[best.provider] || {
-      badge: "bg-gray-100 text-gray-700",
-    };
+  const bestStyle = PROVIDER_STYLES[best.provider] || { badge: "bg-gray-50 text-gray-600", color: "#9B978F" };
 
-  /* -------------------- HELPERS -------------------- */
   const handleCopySku = async () => {
     try {
       await navigator.clipboard.writeText(product.sku);
@@ -80,226 +64,228 @@ export const ProductModal = ({ product, onClose }) => {
 
   const stockBadge = (stock) =>
     stock > 20
-      ? "bg-green-100 text-green-800"
+      ? "bg-emerald-50 text-emerald-700"
       : stock > 0
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-red-100 text-red-800";
+      ? "bg-amber-50 text-amber-700"
+      : "bg-red-50 text-red-600";
 
-  /* -------------------- UI -------------------- */
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-xl"
+        className="bg-[#F2F1EE] w-full sm:max-w-5xl sm:w-full max-h-[96vh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* HEADER */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <div className="flex items-center gap-2">
+
+        {/* HEADER STICKY */}
+        <div className="flex items-center justify-between px-5 py-3.5 bg-[#F2F1EE] border-b border-[#E3E1DC] sticky top-0 z-10">
+          <div className="flex items-center gap-2 min-w-0">
             <span
-              className={`px-3 py-1 rounded-full text-sm ${bestStyle.badge}`}
+              className={`px-3 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${bestStyle.badge}`}
               style={bestStyle.badgeBg ? { backgroundColor: bestStyle.badgeBg } : undefined}
             >
               {best.provider}
             </span>
-
             {providers.length > 1 && (
-              <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800 flex items-center gap-1">
-                <Trophy size={14} />
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1 flex-shrink-0">
+                <Trophy size={11} />
                 Mejor precio
               </span>
             )}
+            <span className="text-sm font-medium text-[#625F5A] truncate hidden sm:block ml-1">
+              {product.name}
+            </span>
           </div>
 
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
-            <X size={22} />
+          <button
+            onClick={onClose}
+            className="ml-3 flex-shrink-0 p-1.5 hover:bg-[#E3E1DC] rounded-lg transition-colors text-[#625F5A] hover:text-[#1A1917]"
+          >
+            <X size={18} />
           </button>
         </div>
 
-        {/* INFO PRINCIPAL */}
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-          {/* IMAGE */}
-        <div className="bg-gray-50 rounded-xl p-6">
-          <div className="relative w-full h-80 md:h-[420px]">
-            <SmartImage
-              src={imageUrl}
-              alt={product.name}
-              fill
-              sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-contain"
-              priority
-            />
+        {/* CUERPO PRINCIPAL */}
+        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+
+          {/* Imagen */}
+          <div className="bg-white rounded-xl border border-[#E3E1DC] p-5 flex items-center justify-center min-h-[240px]"
+               style={{ backgroundColor: best.provider === "SolutionBox" ? "#2b2d32" : "#fff" }}>
+            <div className="relative w-full h-64 md:h-80">
+              <SmartImage
+                src={imageUrl}
+                alt={product.name}
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain"
+                priority
+              />
+            </div>
           </div>
-        </div>
 
+          {/* Detalles */}
+          <div className="flex flex-col gap-4">
 
-          {/* INFO */}
-          <div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">{product.name}</h2>
+            {/* Nombre */}
+            <div>
+              <h2
+                className="text-2xl sm:text-3xl font-bold text-[#1A1917] leading-tight mb-2 tracking-tight"
+              >
+                {product.name}
+              </h2>
 
-            {/* SKU */}
-            <div className="flex items-center gap-2 mb-5">
-            <span className="text-sm font-medium text-gray-900">SKU</span>
-            <span className="px-3 py-1 bg-gray-100 rounded-md font-mono text-gray-900">
-                {product.sku}
-              </span>
-              <button onClick={handleCopySku}>
-                {copied ? (
-                  <Check size={16} className="text-green-600" />
-                ) : (
-                  <Copy size={16} />
-                )}
-              </button>
+              {/* SKU */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-[#9B978F]">SKU</span>
+                <span className="px-2.5 py-0.5 bg-white border border-[#E3E1DC] rounded-md font-mono text-sm text-[#1A1917]">
+                  {product.sku}
+                </span>
+                <button
+                  onClick={handleCopySku}
+                  className="p-1 hover:bg-[#E3E1DC] rounded-md transition-colors text-[#9B978F] hover:text-[#1A1917]"
+                >
+                  {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+                </button>
+              </div>
             </div>
 
-            {/* CARD DE PRECIO — SIEMPRE VERDE */}
-            <div className="mb-4 p-4 rounded-xl bg-green-50 border border-green-300">
-              <p className="text-sm font-medium text-gray-900 flex items-center gap-1">
-              <Trophy size={14} className="text-green-700" />
-              Mejor precio disponible
-            </p>
-
-
-              <p className="text-3xl font-bold text-gray-900">
-                USD{" "}
-                {best.price.toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
+            {/* Precio principal */}
+            <div
+              className="bg-white rounded-xl border p-4"
+              style={{ borderColor: bestStyle.color + "40", borderLeftColor: bestStyle.color, borderLeftWidth: "3px" }}
+            >
+              <p className="text-xs font-medium text-[#9B978F] flex items-center gap-1.5 mb-2">
+                <Trophy size={12} className="text-emerald-600" />
+                Mejor precio disponible
               </p>
 
-              <p className="text-sm text-gray-800 mb-2">
-                + IVA {best.iva}
-              </p>
+              <div className="flex items-baseline gap-1.5 mb-1">
+                <span className="text-sm font-medium text-[#9B978F]">USD</span>
+                <span className="text-3xl font-bold text-[#1A1917] tracking-tight">
+                  {best.price.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
 
-              <span
-                className={`px-3 py-1 rounded-md text-sm ${stockBadge(
-                  best.stockTotal
-                )}`}
-              >
-                Disponible · {best.stockTotal} unidades
+              <p className="text-xs text-[#9B978F] mb-3">+ IVA {best.iva}</p>
+
+              <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${stockBadge(best.stockTotal)}`}>
+                {best.stockTotal > 0 ? `${best.stockTotal} unidades disponibles` : "Sin stock"}
               </span>
             </div>
 
             {ahorro > 0 && (
-              <p className="text-gray-900 text-sm flex items-center gap-1">
-                <TrendingDown size={14} className="text-green-700" />
-                Ahorro: USD{" "}
-                {ahorro.toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
+              <p className="text-sm text-[#625F5A] flex items-center gap-1.5">
+                <TrendingDown size={14} className="text-emerald-600" />
+                Ahorrás{" "}
+                <span className="font-semibold text-[#1A1917]">
+                  USD {ahorro.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                </span>{" "}
+                vs el más caro
               </p>
+            )}
+
+            {/* CTA */}
+            {best.link && (
+              <a
+                href={best.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#1D4ED8] hover:bg-[#1e40af] text-white text-sm font-medium transition-all duration-150 active:scale-[0.98]"
+              >
+                Ir al mejor precio
+                <ExternalLink size={15} />
+              </a>
             )}
           </div>
         </div>
 
-        {/* COMPARATIVA — INTACTA */}
+        {/* TABLA COMPARATIVA */}
         {providers.length > 1 && (
-          <div className="px-6 pb-6">
-            <h3 className="font-semibold mb-3 text-gray-900">
+          <div className="px-5 pb-5">
+            <h3 className="text-sm font-semibold text-[#1A1917] mb-3">
               Comparación de precios{" "}
-              <span className="text-sm text-black">
-                ({providers.length} proveedores)
-              </span>
+              <span className="font-normal text-[#9B978F]">· {providers.length} proveedores</span>
             </h3>
 
-            <div className="flex items-center justify-between gap-4 px-4 py-3 text-xs text-black font-medium border-b border-gray-100">
-              <div className="min-w-[140px]">Proveedor</div>
-              <div className="min-w-[90px]">SKU</div>
-              <div className="min-w-[140px] text-right">Precio</div>
-              <div className="min-w-[90px] text-right">Stock</div>
-              <div className="min-w-[40px] text-center">Link</div>
-            </div>
-
-            <div className="space-y-3 pt-3">
-              {providers.map((p, i) => {
-                const style = PROVIDER_STYLES[p.provider] || {};
-                const isBest = best.provider === p.provider;
-
-                return (
-                  <div
-                    key={`${p.provider}-${i}`}
-                    className={`flex items-center justify-between gap-4 p-4 rounded-xl border border-gray-100 ${
-                      isBest ? "bg-green-50" : "hover:bg-gray-50"
-                    }`}
-                  >
-                    <div className="min-w-[140px] flex items-center gap-2">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${style.badge}`}
-                        style={style.badgeBg ? { backgroundColor: style.badgeBg } : undefined}
+            {/* Scroll horizontal en mobile */}
+            <div className="overflow-x-auto rounded-xl border border-[#E3E1DC]">
+              <table className="w-full min-w-[520px] text-sm bg-white">
+                <thead>
+                  <tr className="border-b border-[#E3E1DC] bg-[#F8F7F5]">
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Proveedor</th>
+                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">SKU</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Precio</th>
+                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Stock</th>
+                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Link</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {providers.map((p, i) => {
+                    const ps = PROVIDER_STYLES[p.provider] || {};
+                    const isBest = best.provider === p.provider;
+                    return (
+                      <tr
+                        key={`${p.provider}-${i}`}
+                        className={`border-b border-[#F0EEEA] last:border-0 transition-colors ${
+                          isBest ? "bg-emerald-50/60" : "hover:bg-[#F8F7F5]"
+                        }`}
                       >
-                        {p.provider}
-                      </span>
-                      {isBest && (
-                        <Trophy size={14} className="text-green-600" />
-                      )}
-                    </div>
-
-                    <div className="min-w-[90px] font-mono text-xs text-black">
-                      {product.sku}
-                    </div>
-
-                    <div className="min-w-[140px] text-right">
-                      <p className="font-semibold text-gray-900">
-                        USD{" "}
-                        {p.price.toLocaleString("es-AR", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </p>
-                      <p className="text-xs text-black">
-                        + IVA {p.iva}
-                      </p>
-                    </div>
-
-                    <div className="min-w-[90px] text-right">
-                      <span
-                        className={`px-2 py-1 rounded-md text-xs font-medium ${stockBadge(
-                          p.stockTotal
-                        )}`}
-                      >
-                        {p.stockTotal} un.
-                      </span>
-                    </div>
-
-                    <div className="min-w-[40px] text-center">
-                      {p.link ? (
-                        <a
-                          href={p.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800"
-                        >
-                          <ExternalLink size={18} />
-                        </a>
-                      ) : (
-                        <span className="text-gray-300">—</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${ps.badge || "bg-gray-50 text-gray-600"}`}
+                              style={ps.badgeBg ? { backgroundColor: ps.badgeBg } : undefined}
+                            >
+                              {p.provider}
+                            </span>
+                            {isBest && <Trophy size={12} className="text-emerald-500" />}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-[#625F5A]">{product.sku}</td>
+                        <td className="px-4 py-3 text-right">
+                          <p className="font-semibold text-[#1A1917]">
+                            USD {p.price.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-[11px] text-[#9B978F]">+ IVA {p.iva}</p>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${stockBadge(p.stockTotal)}`}>
+                            {p.stockTotal} un.
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {p.link ? (
+                            <a
+                              href={p.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#2563EB] hover:text-[#1D4ED8] transition-colors inline-flex"
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                          ) : (
+                            <span className="text-[#C8C5BE]">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
         {/* FOOTER */}
-        <div className="flex justify-end gap-4 p-6 border-t border-gray-100">
-          <button onClick={onClose} className="text-black">
+        <div className="flex justify-end gap-3 px-5 py-4 border-t border-[#E3E1DC]">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm text-[#625F5A] hover:text-[#1A1917] hover:bg-[#E3E1DC] rounded-lg transition-colors"
+          >
             Cerrar
           </button>
-
-          {best.link && (
-            <a
-              href={best.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-            >
-              Ir al mejor precio
-              <ExternalLink size={18} />
-            </a>
-          )}
         </div>
       </div>
     </div>

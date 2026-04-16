@@ -1,25 +1,49 @@
 "use client";
 import { SearchBar } from '../SearchBar/SearchBar';
 
+const PROVIDERS = [
+  "Elit", "Nucleo", "PCArts", "Masnet", "Corcisa",
+  "SolutionBox", "Invid", "AIR", "Microglobal", "Distecna",
+];
+
 export const LandingPage = ({ searchQuery, setSearchQuery, onSearch }) => {
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="max-w-4xl w-full text-center">
-        <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-          Todos tus proveedores, una sola búsqueda
-        </h2>
-        
-        <p className="text-lg md:text-xl text-gray-600 mb-12">
-          Encuentra todos los productos con stock, precios y detalles para acelerar tus ventas.
+    <div className="flex items-center justify-center min-h-[calc(100vh-3.5rem)]">
+      <div className="w-full max-w-4xl mx-auto px-4 py-16 sm:py-20 text-center">
+
+        {/* Headline */}
+        <h1
+          className="text-2xl sm:text-3xl text-[#1A1917] mb-5 leading-snug font-extrabold tracking-wide"
+          style={{ fontFamily: "var(--font-display, sans-serif)" }}
+        >
+          Todos los proveedores,{" "}
+          <span className="text-[#2563EB]">una sola búsqueda.</span>
+        </h1>
+
+        <p className="text-base sm:text-lg text-[#625F5A] mb-10 max-w-md mx-auto leading-relaxed">
+          Precios, stock y condiciones en tiempo real para tomar la mejor decisión de compra.
         </p>
 
-        <div className="max-w-2xl mx-auto">
-          <SearchBar 
+        {/* SearchBar */}
+        <div className="mb-10">
+          <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
             onSearch={onSearch}
             variant="large"
           />
+        </div>
+
+        {/* Providers pills */}
+        <div className="flex flex-wrap justify-center gap-1.5">
+          {PROVIDERS.map((p) => (
+            <span
+              key={p}
+              className="px-3 py-1 rounded-full text-[11px] font-medium bg-white border border-[#E3E1DC] text-[#9B978F] shadow-sm select-none"
+            >
+              {p}
+            </span>
+          ))}
         </div>
       </div>
     </div>
