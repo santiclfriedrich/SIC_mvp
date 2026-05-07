@@ -91,6 +91,34 @@ function isSku(query = "") {
   return q && !q.includes(" ") && /[0-9]/.test(q) && /[A-Z0-9/-]/i.test(q);
 }
 
+function normSku(s) {
+  return String(s ?? "").trim().toUpperCase().replace(/[\s\-_.]/g, "");
+}
+
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromCorcisa(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isCorcisaCacheWarm()) return [];
+
+  try {
+    const catalog = await fetchAllProductsFromCorcisaCached({
+      limit: 100,
+      ttlMs: CORCISA_CATALOG_TTL_MS,
+    });
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => skuSet.has(normSku(p?.codigo_producto)));
+    console.log(`🔵 [Corcisa findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Corcisa] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }

@@ -233,6 +233,54 @@ export async function fetchProductsFromPcarts(query = "") {
 }
 
 // -------------------------------
+// Lookup batch por SKUs (in-memory, sin requests extra)
+// -------------------------------
+function normSku(s) {
+  return String(s ?? "").trim().toUpperCase().replace(/[\s\-_.]/g, "");
+}
+
+export async function findProductsBySkusFromPcarts(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!cacheValid()) return [];
+
+  try {
+    const { catalog, stock } = await getUnifiedPcartsDataset();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const stockMap = new Map();
+    for (const s of stock) {
+      if (!s?.sku) continue;
+      stockMap.set(s.sku, {
+        price: Number(s.price) || 0,
+        stock: Number(s.stock) || 0,
+        sku_date_updated: s.sku_date_updated || null,
+      });
+    }
+
+    const results = catalog
+      .filter((c) => skuSet.has(normSku(c?.sku)))
+      .map((c) => {
+        const sInfo = stockMap.get(c.sku) || {};
+        return {
+          ...c,
+          price: sInfo.price ?? 0,
+          stock: sInfo.stock ?? 0,
+          sku_date_updated: sInfo.sku_date_updated ?? null,
+        };
+      });
+
+    console.log(`🔵 [PCArts findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [PCArts] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
+// -------------------------------
 // SKU exacto (local + redis)
 // -------------------------------
 export async function fetchProductBySkuFromPcarts(sku) {

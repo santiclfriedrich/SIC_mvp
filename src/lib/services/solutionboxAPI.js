@@ -228,6 +228,32 @@ export async function fetchProductsFromSolutionbox(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromSolutionbox(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isSolutionboxCacheWarm()) return [];
+
+  try {
+    const catalog = await getSolutionboxCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const pn = normSku(p.Numero_de_Parte ?? "");
+      const al = normSku(p.Alias ?? "");
+      return skuSet.has(pn) || skuSet.has(al);
+    });
+
+    console.log(`🔵 [SolutionBox findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [SolutionBox] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 // ── Public: búsqueda exacta por SKU ──────────────────────────────────────────
 export async function fetchProductBySkuFromSolutionbox(sku) {
   try {

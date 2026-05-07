@@ -317,6 +317,32 @@ export async function fetchProductsFromInvid(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromInvid(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isInvidCacheWarm()) return [];
+
+  try {
+    const catalog = await getInvidCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const pn = normSku(p.PART_NUMBER ?? "");
+      const id = normSku(p.ID ?? "");
+      return skuSet.has(pn) || skuSet.has(id);
+    });
+
+    console.log(`🔵 [Invid findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Invid] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 // ── Public: búsqueda exacta por SKU ──────────────────────────────────────────
 export async function fetchProductBySkuFromInvid(sku) {
   try {

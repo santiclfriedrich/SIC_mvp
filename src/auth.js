@@ -8,8 +8,10 @@ import { prisma } from "@/lib/prisma";
 export const authOptions = {
   adapter: PrismaAdapter(prisma),
 
-  // Para internal app está perfecto usar JWT (menos quilombo que DB sessions)
-  session: { strategy: "jwt" },
+  // Para internal app está perfecto usar JWT (menos quilombo que DB sessions).
+  // maxAge corto (8h) para que usuarios desactivados pierdan acceso al re-loguearse;
+  // authorize() ya chequea isActive en cada login.
+  session: { strategy: "jwt", maxAge: 8 * 60 * 60 },
 
   providers: [
     Credentials({

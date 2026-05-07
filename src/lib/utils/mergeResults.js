@@ -10,7 +10,7 @@
  *   "lm-gen5 ii" → "LMGEN5II"
  *   "ABC_123.4" → "ABC1234"
  */
-function normalizeSku(raw) {
+export function normalizeSku(raw) {
   return String(raw || "")
     .trim()
     .toUpperCase()
@@ -20,6 +20,7 @@ function normalizeSku(raw) {
 export function mergeResults(...lists) {
   const skuMap = {};          // normalizedSku → merged entry
   const canonicalSku = {};    // normalizedSku → first-seen display SKU
+  const seenProvider = {};    // normalizedSku → Set(providerName) — evita duplicar el mismo proveedor
 
   for (const list of lists) {
     if (!Array.isArray(list)) continue;
@@ -44,12 +45,18 @@ export function mergeResults(...lists) {
           description: p.description,
           providers:   [],
         };
+        seenProvider[normalizedSku] = new Set();
       }
 
       // Fill in missing top-level fields from later providers
       if (!skuMap[normalizedSku].name  && p.name)  skuMap[normalizedSku].name  = p.name;
       if (!skuMap[normalizedSku].brand && p.brand) skuMap[normalizedSku].brand = p.brand;
       if (!skuMap[normalizedSku].image && p.image) skuMap[normalizedSku].image = p.image;
+
+      // Dedupe: un mismo proveedor sólo se agrega una vez por SKU
+      const providerKey = String(p.provider || "").trim().toLowerCase();
+      if (providerKey && seenProvider[normalizedSku].has(providerKey)) continue;
+      if (providerKey) seenProvider[normalizedSku].add(providerKey);
 
       skuMap[normalizedSku].providers.push({
         provider:   p.provider,

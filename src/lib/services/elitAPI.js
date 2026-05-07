@@ -208,6 +208,32 @@ export async function fetchProductsFromElit(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromElit(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isElitCacheWarm()) return [];
+
+  try {
+    const catalog = await getElitCatalogCached();
+    if (!catalog.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const s1 = normSku(getProductSku(p));
+      const s2 = normSku(p.codigo_alfa ?? "");
+      return skuSet.has(s1) || skuSet.has(s2);
+    });
+
+    console.log(`🔵 [Elit findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Elit] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 export async function fetchProductBySkuFromElit(sku) {
   try {
     const catalog = await getElitCatalogCached();

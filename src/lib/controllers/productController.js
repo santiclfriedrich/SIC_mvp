@@ -1,20 +1,20 @@
 // web/src/lib/controllers/productController.js
 
-import { mergeResults } from "@/lib/utils/mergeResults";
+import { mergeResults, normalizeSku } from "@/lib/utils/mergeResults";
 import { cleanMergedProduct } from "@/lib/utils/cleanMergedProduct";
 import { withTimeout } from "@/lib/utils/withTimeout";
 
 // Services
-import { fetchProductsFromElit, fetchProductBySkuFromElit, isElitCacheWarm } from "@/lib/services/elitAPI";
-import { fetchProductsFromMasnet, fetchProductBySkuFromMasnet, isMasnetCacheWarm } from "@/lib/services/masnetAPI";
-import { fetchProductsFromCorcisa, isCorcisaCacheWarm } from "@/lib/services/corcisaAPI";
-import { fetchProductsFromNucleo, isNucleoCacheWarm } from "@/lib/services/nucleoAPI";
-import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts, isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
-import { fetchProductsFromInvid, fetchProductBySkuFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
-import { fetchProductsFromSolutionbox, fetchProductBySkuFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
-import { fetchProductsFromAirIntra, fetchProductBySkuFromAirIntra, isAirIntraCacheWarm } from "@/lib/services/airintraAPI";
-import { fetchProductsFromMicroglobal, fetchProductBySkuFromMicroglobal, isMicroglobalCacheWarm } from "@/lib/services/microglobalAPI";
-import { fetchProductsFromDistecna, fetchProductBySkuFromDistecna, isDistecnaCacheWarm } from "@/lib/services/distecnaAPI";
+import { fetchProductsFromElit, fetchProductBySkuFromElit, findProductsBySkusFromElit, isElitCacheWarm } from "@/lib/services/elitAPI";
+import { fetchProductsFromMasnet, fetchProductBySkuFromMasnet, findProductsBySkusFromMasnet, isMasnetCacheWarm } from "@/lib/services/masnetAPI";
+import { fetchProductsFromCorcisa, findProductsBySkusFromCorcisa, isCorcisaCacheWarm } from "@/lib/services/corcisaAPI";
+import { fetchProductsFromNucleo, findProductsBySkusFromNucleo, isNucleoCacheWarm } from "@/lib/services/nucleoAPI";
+import { fetchProductsFromPcarts, fetchProductBySkuFromPcarts, findProductsBySkusFromPcarts, isPcartsCacheWarm } from "@/lib/services/pcartsAPI";
+import { fetchProductsFromInvid, fetchProductBySkuFromInvid, findProductsBySkusFromInvid, isInvidCacheWarm } from "@/lib/services/invidAPI";
+import { fetchProductsFromSolutionbox, fetchProductBySkuFromSolutionbox, findProductsBySkusFromSolutionbox, isSolutionboxCacheWarm } from "@/lib/services/solutionboxAPI";
+import { fetchProductsFromAirIntra, fetchProductBySkuFromAirIntra, findProductsBySkusFromAirIntra, isAirIntraCacheWarm } from "@/lib/services/airintraAPI";
+import { fetchProductsFromMicroglobal, fetchProductBySkuFromMicroglobal, findProductsBySkusFromMicroglobal, isMicroglobalCacheWarm } from "@/lib/services/microglobalAPI";
+import { fetchProductsFromDistecna, fetchProductBySkuFromDistecna, findProductsBySkusFromDistecna, isDistecnaCacheWarm } from "@/lib/services/distecnaAPI";
 
 // Models
 import {
@@ -168,13 +168,15 @@ export async function getAllProducts({ q = "" } = {}) {
     const microglobalData = microglobal.status === "fulfilled" ? formatMicroglobalProducts(microglobal.value)     : [];
     const distecnaData    = distecna.status    === "fulfilled" ? formatDistecnaProducts(distecna.value)           : [];
 
-    let allProducts = mergeResults(elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData, distecnaData);
-    allProducts = allProducts.map(cleanMergedProduct);
+    const pass1Lists = [elitData, masnetData, corcisaData, nucleoData, pcartsData, invidData, solutionboxData, airintraData, microglobalData, distecnaData];
+
+    // Pasada 1: merge + filtro por términos (igual que antes)
+    let pass1Products = mergeResults(...pass1Lists).map(cleanMergedProduct);
 
     if (query) {
       const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
 
-      allProducts = allProducts.filter((p) => {
+      pass1Products = pass1Products.filter((p) => {
         const haystack = `${p.name || ""} ${p.brand || ""} ${p.sku || ""}`.toLowerCase();
 
         // SKU exacto o parcial (tolerante a separadores: "LT-1000" ≈ "LT1000")
@@ -193,12 +195,53 @@ export async function getAllProducts({ q = "" } = {}) {
       });
     }
 
+    // Sin query (listado completo) o sin matches → no hay nada que unificar
+    const matchedSkuSet = new Set(pass1Products.map((p) => normalizeSku(p.sku)).filter(Boolean));
+
+    if (!query || matchedSkuSet.size === 0) {
+      const elapsed = ((Date.now() - start) / 1000).toFixed(2);
+      console.log(
+        `✅ Búsqueda completada en ${elapsed}s — Total: ${pass1Products.length} | OK: ${10 - failed.length}/10 proveedores`
+      );
+      return pass1Products;
+    }
+
+    // Pasada 2: lookup por SKU contra catálogos cacheados (in-memory, sin requests externos)
+    const skuArray = Array.from(matchedSkuSet);
+    const pass2 = await Promise.allSettled([
+      findProductsBySkusFromElit(skuArray),
+      findProductsBySkusFromMasnet(skuArray),
+      findProductsBySkusFromCorcisa(skuArray),
+      findProductsBySkusFromNucleo(skuArray),
+      findProductsBySkusFromPcarts(skuArray),
+      findProductsBySkusFromInvid(skuArray),
+      findProductsBySkusFromSolutionbox(skuArray),
+      findProductsBySkusFromAirIntra(skuArray),
+      findProductsBySkusFromMicroglobal(skuArray),
+      findProductsBySkusFromDistecna(skuArray),
+    ]);
+
+    const formatters = [
+      formatElitProducts, formatMasnetProducts, formatCorcisaProducts, formatNucleoProducts, formatPcartsProducts,
+      formatInvidProducts, formatSolutionboxProducts, formatAirIntraProducts, formatMicroglobalProducts, formatDistecnaProducts,
+    ];
+
+    const pass2Lists = pass2.map((r, i) => (r.status === "fulfilled" ? formatters[i](r.value) : []));
+
+    const pass2Added = pass2Lists.reduce((sum, l) => sum + l.length, 0);
+
+    // Re-merge: pasa 1 raw + pasa 2 raw → todos los providers para cada SKU compartido
+    const merged = mergeResults(...pass1Lists, ...pass2Lists).map(cleanMergedProduct);
+
+    // Conservar solo SKUs que sobrevivieron al filtro de la pasada 1
+    const finalProducts = merged.filter((p) => matchedSkuSet.has(normalizeSku(p.sku)));
+
     const elapsed = ((Date.now() - start) / 1000).toFixed(2);
     console.log(
-      `✅ Búsqueda completada en ${elapsed}s — Total: ${allProducts.length} | OK: ${10 - failed.length}/10 proveedores`
+      `✅ Búsqueda completada en ${elapsed}s — Total: ${finalProducts.length} (pasada 2: +${pass2Added} matches) | OK: ${10 - failed.length}/10 proveedores`
     );
 
-    return allProducts;
+    return finalProducts;
   } catch (error) {
     console.error("❌ Error general getAllProducts:", error);
     throw new Error("Error al obtener productos");

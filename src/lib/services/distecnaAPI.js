@@ -236,6 +236,32 @@ export async function fetchProductsFromDistecna(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromDistecna(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isDistecnaCacheWarm()) return [];
+
+  try {
+    const catalog = await getDistecnaCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const cd = normSku(p.code ?? "");
+      const sk = normSku(p.sku ?? "");
+      return skuSet.has(cd) || skuSet.has(sk);
+    });
+
+    console.log(`🔵 [Distecna findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Distecna] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 // ── Public: búsqueda exacta por SKU (con detalle enriquecido) ─────────────────
 export async function fetchProductBySkuFromDistecna(sku) {
   try {

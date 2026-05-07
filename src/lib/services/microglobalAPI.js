@@ -237,6 +237,33 @@ export async function fetchProductsFromMicroglobal(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromMicroglobal(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isMicroglobalCacheWarm()) return [];
+
+  try {
+    const catalog = await getMicroglobalCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const pn  = normSku(p.partNumber ?? "");
+      const ori = normSku(p.partNumber_ori ?? "");
+      const upc = normSku(p.upc ?? "");
+      return skuSet.has(pn) || skuSet.has(ori) || skuSet.has(upc);
+    });
+
+    console.log(`🔵 [Microglobal findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Microglobal] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 // ── Public: búsqueda exacta por SKU ──────────────────────────────────────────
 export async function fetchProductBySkuFromMicroglobal(sku) {
   try {

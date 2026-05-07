@@ -203,6 +203,38 @@ function normUpper(s) {
   return String(s ?? "").trim().toUpperCase();
 }
 
+function normSku(s) {
+  return normUpper(s).replace(/[\s\-_.]/g, "");
+}
+
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromMasnet(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isMasnetCatalogWarm()) return [];
+
+  try {
+    const catalog = await getMasnetCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      return (
+        skuSet.has(normSku(p.codigo_producto)) ||
+        skuSet.has(normSku(p.codigo_alfa)) ||
+        skuSet.has(normSku(p.id))
+      );
+    });
+
+    console.log(`🟠 [Masnet findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Masnet] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 export async function fetchProductBySkuFromMasnet(
   sku,
   { limit = 100, maxPages = 30, timeout = 5000 } = {}

@@ -35,7 +35,7 @@ export function formatElitProducts(rawProducts) {
 
       // IVA como string "21%"
       const ivaNum = Number(p.iva);
-      const iva    = ivaNum > 0 ? `${ivaNum}%` : "21%";
+      const iva = ivaNum > 0 ? `${ivaNum}%` : "21%";
 
       // Stock
       const stockTotal = Number(p.stock_total) || 0;

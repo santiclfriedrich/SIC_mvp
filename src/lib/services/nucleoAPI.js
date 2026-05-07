@@ -161,6 +161,33 @@ export function isNucleoCacheWarm() {
 }
 
 /** ================================
+ * 🔵 LOOKUP BATCH POR SKUs (in-memory, sin requests extra)
+ * ================================ */
+function normSku(s) {
+  return String(s ?? "").trim().toUpperCase().replace(/[\s\-_.]/g, "");
+}
+
+export async function findProductsBySkusFromNucleo(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isNucleoCacheWarm()) return [];
+
+  try {
+    const catalog = await getNucleoCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => skuSet.has(normSku(p?.partNumber)));
+    console.log(`🔵 [Núcleo findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [Núcleo] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
+/** ================================
  * 🔵 BÚSQUEDA PRINCIPAL
  * ================================ */
 export async function fetchProductsFromNucleo(query = "") {

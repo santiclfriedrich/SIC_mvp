@@ -2,16 +2,9 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
-console.log("ADMIN_SEED_KEY cargada?", Boolean(process.env.ADMIN_SEED_KEY));
-
-
 const prisma = new PrismaClient();
 
 export async function POST(req) {
-
-  console.log("ADMIN_SEED_KEY runtime:", process.env.ADMIN_SEED_KEY);
-
-
   try {
     const body = await req.json();
 

@@ -293,6 +293,32 @@ export async function fetchProductsFromAirIntra(query = "") {
   }
 }
 
+// ── Public: lookup batch por SKUs (in-memory, sin requests extra) ────────────
+export async function findProductsBySkusFromAirIntra(skus) {
+  if (!Array.isArray(skus) || !skus.length) return [];
+  if (!isAirIntraCacheWarm()) return [];
+
+  try {
+    const catalog = await getAirIntraCatalogCached();
+    if (!catalog?.length) return [];
+
+    const skuSet = new Set(skus.map(normSku).filter(Boolean));
+    if (!skuSet.size) return [];
+
+    const results = catalog.filter((p) => {
+      const pn = normSku(p.part_number ?? "");
+      const cd = normSku(p.codigo ?? "");
+      return skuSet.has(pn) || skuSet.has(cd);
+    });
+
+    console.log(`🔵 [AirIntra findBySkus] ${skuSet.size} SKUs → ${results.length} matches`);
+    return results;
+  } catch (err) {
+    console.error("❌ [AirIntra] findProductsBySkus:", err.message);
+    return [];
+  }
+}
+
 // ── Public: búsqueda exacta por SKU ──────────────────────────────────────────
 export async function fetchProductBySkuFromAirIntra(sku) {
   try {
