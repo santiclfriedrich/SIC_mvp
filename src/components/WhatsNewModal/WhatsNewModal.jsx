@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Sparkles, LayoutGrid, ArrowUpDown, ImageIcon, Type, Zap, Package } from "lucide-react";
+import { X, Sparkles, LayoutGrid, ArrowUpDown, ImageIcon, Search, Zap, Package } from "lucide-react";
 
-const SESSION_KEY = "whats_new_v3_seen";
+const SESSION_KEY = "whats_new_v4_seen";
 
 const FEATURES = [
   {
@@ -22,14 +22,14 @@ const FEATURES = [
     desc: "Ordená por mayor stock, menor stock, sin stock, A → Z o Z → A.",
   },
   {
+    icon: Search,
+    title: "Búsqueda mejorada",
+    desc: "Resultados más precisos y veloces al buscar por nombre, marca o código.",
+  },
+  {
     icon: ImageIcon,
     title: "Lógica inteligente de imágenes",
     desc: "Prioriza la imagen real del producto. Si no hay, usa la imagen del proveedor como fallback.",
-  },
-  {
-    icon: Type,
-    title: "Nueva tipografía",
-    desc: "Work Sans en toda la interfaz para una lectura más clara y moderna.",
   },
   {
     icon: Zap,
@@ -79,7 +79,7 @@ export const WhatsNewModal = () => {
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-[#1A1917]">Novedades</h2>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#2563EB] text-white">
-                  v3.0
+                  v4.0
                 </span>
               </div>
               <p className="text-xs text-[#9B978F] mt-0.5">Argentina Color · Compras</p>
