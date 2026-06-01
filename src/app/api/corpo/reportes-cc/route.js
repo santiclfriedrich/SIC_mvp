@@ -10,6 +10,7 @@ import {
   deudaPorVendedor,
 } from "@/lib/reportes-cc/parser";
 import { generarSpreadsheet } from "@/lib/reportes-cc/generador";
+import { obtenerNombreArchivo } from "@/lib/reportes-cc/google-client";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -148,10 +149,17 @@ export async function GET() {
     },
   });
 
+  // Trae el nombre actual de cada Sheet desde Drive (en paralelo).
+  // Si el archivo fue trasheado o no es accesible, devuelve null y la UI muestra "Archivo eliminado".
+  const nombres = await Promise.all(
+    reportes.map((r) => obtenerNombreArchivo(r.spreadsheetId))
+  );
+
   return NextResponse.json({
-    reportes: reportes.map((r) => ({
+    reportes: reportes.map((r, i) => ({
       ...r,
       totalDeuda: Number(r.totalDeuda),
+      nombreArchivo: nombres[i],
     })),
   });
 }

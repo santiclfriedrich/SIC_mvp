@@ -121,3 +121,34 @@ export async function listarSheets(spreadsheetId) {
   }
   return map;
 }
+
+/**
+ * Devuelve el nombre actual del archivo en Drive.
+ * Devuelve null si el archivo ya no existe o no es accesible.
+ */
+export async function obtenerNombreArchivo(spreadsheetId) {
+  const drive = getDriveClient();
+  try {
+    const res = await drive.files.get({
+      fileId: spreadsheetId,
+      fields: "name, trashed",
+      supportsAllDrives: true,
+    });
+    if (res.data.trashed) return null;
+    return res.data.name;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Envía el archivo a la papelera del Shared Drive (reversible).
+ */
+export async function trashearArchivo(spreadsheetId) {
+  const drive = getDriveClient();
+  await drive.files.update({
+    fileId: spreadsheetId,
+    requestBody: { trashed: true },
+    supportsAllDrives: true,
+  });
+}
