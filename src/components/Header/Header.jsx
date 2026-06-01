@@ -1,8 +1,16 @@
 "use client";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { UserMenu } from "../UserMenu/UserMenu";
 
 export const Header = () => {
+  const pathname = usePathname() || "";
+  const seccion = pathname.startsWith("/corpo")
+    ? "Corpo"
+    : pathname.startsWith("/admin")
+      ? "Admin"
+      : "Compras";
+
   return (
     <header className="w-full bg-[#0D1829] border-b border-white/[0.06] sticky top-0 z-40">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 h-14">
@@ -18,7 +26,7 @@ export const Header = () => {
           />
           <span className="hidden sm:block h-3.5 w-px bg-white/20" />
           <span className="hidden sm:block text-[11px] font-medium text-white/40 tracking-widest uppercase">
-            Compras
+            {seccion}
           </span>
         </div>
 

@@ -22,8 +22,7 @@ export const LandingPage = ({ searchQuery, setSearchQuery, onSearch, compact = f
           className="text-2xl sm:text-3xl text-[#1A1917] mb-5 leading-snug font-extrabold tracking-wide"
           style={{ fontFamily: "var(--font-display, sans-serif)" }}
         >
-          Todos los proveedores,{" "}
-          <span className="text-[#2563EB]">una sola búsqueda.</span>
+          Buscá y compará todos los proveedores.
         </h1>
 
         {!compact && (

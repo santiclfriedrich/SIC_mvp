@@ -17,11 +17,31 @@ model User {
   role      Role     @default(USER)
   isActive  Boolean  @default(true)
 
-  accounts  Account[]
-  sessions  Session[]
+  accounts   Account[]
+  sessions   Session[]
+  reportesCc ReporteCC[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ReporteCC {
+  id            String   @id @default(cuid())
+  userId        String
+  fuente        String
+  spreadsheetId String
+  spreadsheetUrl String
+  totalDeuda    Decimal  @db.Decimal(14, 2)
+  totalClientes Int
+  totalComp     Int
+  excluidos     Int      @default(0)
+  clientesJson  Json
+  porVendedorJson Json
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Account {
@@ -64,4 +84,5 @@ enum Role {
   ADMIN
   USER
   VIEWER
+  CORPO
 }
