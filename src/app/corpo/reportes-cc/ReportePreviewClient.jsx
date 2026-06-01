@@ -115,14 +115,13 @@ export function ReportePreviewClient() {
           <button
             type="submit"
             disabled={!file || loading}
-            className="px-4 py-2 rounded-lg bg-[#2563EB] text-white text-sm font-medium hover:bg-[#1D4ED8] disabled:opacity-50 disabled:cursor-not-allowed transition"
+            className="px-5 py-2 rounded-lg bg-gradient-to-br from-[#1F4E78] to-[#2E75B6] text-white text-sm font-medium hover:shadow-lg hover:shadow-[#1F4E78]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             {loading ? "Generando reporte…" : "Generar reporte"}
           </button>
         </div>
         <p className="text-xs text-[#9B978F] mt-2">
-          Procesa el archivo, crea el Google Sheet con las 3 hojas formateadas y lo
-          guarda en tu historial. Puede tardar 10-20 segundos.
+          El reporte puede demorar de 10 a 20 segundos en generarse.
         </p>
       </form>
 
@@ -134,12 +133,21 @@ export function ReportePreviewClient() {
 
       {/* Historial */}
       <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
-        <div className="px-5 py-3 border-b border-black/[0.06] flex items-center justify-between">
-          <h3 className="font-semibold text-[#1A1917]">Reportes generados</h3>
+        <div className="px-5 py-3 bg-gradient-to-r from-[#1F4E78] to-[#2E75B6] text-white flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="9" y1="13" x2="15" y2="13" />
+              <line x1="9" y1="17" x2="15" y2="17" />
+            </svg>
+            <h3 className="font-semibold">Reportes generados</h3>
+            <span className="text-xs text-white/70 ml-1">({reportes.length})</span>
+          </div>
           <button
             onClick={cargarReportes}
             disabled={loadingList}
-            className="text-xs text-[#9B978F] hover:text-[#1A1917] disabled:opacity-50 flex items-center gap-1"
+            className="text-xs text-white/80 hover:text-white disabled:opacity-50 flex items-center gap-1 bg-white/10 hover:bg-white/20 backdrop-blur px-2.5 py-1 rounded-md transition"
             title="Sincronizar nombres con Drive"
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
