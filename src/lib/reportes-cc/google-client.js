@@ -2,6 +2,7 @@
 // Las credenciales viven en GOOGLE_SERVICE_ACCOUNT_JSON (env).
 
 import { google } from "googleapis";
+import { Readable } from "node:stream";
 
 let cachedAuth = null;
 
@@ -150,5 +151,66 @@ export async function trashearArchivo(spreadsheetId) {
     fileId: spreadsheetId,
     requestBody: { trashed: true },
     supportsAllDrives: true,
+  });
+}
+
+/**
+ * Sube un .xlsx crudo a la carpeta configurada (SIN convertir). Devuelve el id.
+ * Se usa para guardar la planilla como "molde" del export a Sheets.
+ */
+export async function subirXlsx(buffer, nombre) {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!folderId) throw new Error("Falta GOOGLE_DRIVE_FOLDER_ID en el environment");
+
+  const drive = getDriveClient();
+  const res = await drive.files.create({
+    requestBody: { name: nombre, parents: [folderId] },
+    media: {
+      mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      body: Readable.from(buffer),
+    },
+    fields: "id",
+    supportsAllDrives: true,
+  });
+  return res.data.id;
+}
+
+/**
+ * Copia un archivo de Drive CONVIRTIÉNDOLO a Google Spreadsheet (conserva hojas,
+ * formato y fórmulas del .xlsx). Devuelve { spreadsheetId, spreadsheetUrl }.
+ */
+export async function copiarComoSheet(fileId, nombre) {
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  const drive = getDriveClient();
+  const res = await drive.files.copy({
+    fileId,
+    requestBody: {
+      name: nombre,
+      mimeType: "application/vnd.google-apps.spreadsheet",
+      parents: folderId ? [folderId] : undefined,
+    },
+    fields: "id, webViewLink",
+    supportsAllDrives: true,
+  });
+  return { spreadsheetId: res.data.id, spreadsheetUrl: res.data.webViewLink };
+}
+
+/** Lee un rango (A1) de un Spreadsheet. Devuelve la matriz de valores. */
+export async function leerRango(spreadsheetId, rangoA1) {
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: rangoA1 });
+  return res.data.values || [];
+}
+
+/**
+ * Escribe varios rangos de una en una sola llamada.
+ * @param {Array<{range:string, values:any[][]}>} data
+ */
+export async function valoresBatchUpdate(spreadsheetId, data) {
+  if (!data || data.length === 0) return;
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: "USER_ENTERED", data },
   });
 }

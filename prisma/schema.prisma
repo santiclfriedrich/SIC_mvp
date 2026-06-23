@@ -85,4 +85,66 @@ enum Role {
   USER
   VIEWER
   CORPO
+  TIENDAS
+}
+
+/// Un SKU del módulo de pricing. Los campos base (stock, costo, peso) se
+/// enriquecen desde el report21; los precios seteados por tienda viven en
+/// preciosJson como { icbc, fravega, megatone, oncity } (precios de 1 pago).
+model PricingProduct {
+  id              String    @id @default(cuid())
+  sku             String    @unique
+  descripcion     String?
+  marca           String?
+  esLP            Boolean   @default(false)
+  ivaCoef         Decimal   @db.Decimal(6, 4) @default(1.21)
+  stock           Int       @default(0)
+  costoSinIVA     Decimal   @db.Decimal(16, 4)
+  pesoAforado     Decimal   @db.Decimal(10, 3) @default(0)
+  stockValorizado Decimal   @db.Decimal(18, 4) @default(0)
+  preciosJson     Json      @default("{}")
+  precios3Json    Json      @default("{}")
+  feesJson        Json      @default("{}")
+  report21At      DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+/// Config editable del módulo (tasas/comisiones/coeficientes CSI y tablas de
+/// fee por peso). Fila única (id = 1). Si no existe, se usan los defaults del
+/// código (src/lib/pricing/stores.js).
+model PricingConfig {
+  id         Int      @id @default(1)
+  configJson Json
+  updatedAt  DateTime @updatedAt
+}
+
+/// Snapshot del último report21 subido (datos base por SKU). Se reemplaza por
+/// completo en cada carga. Sirve para enriquecer SKUs nuevos al setear precio.
+model Report21Row {
+  sku             String   @id
+  descripcion     String?
+  marca           String?
+  esLP            Boolean  @default(false)
+  ivaCoef         Decimal  @db.Decimal(6, 4) @default(1.21)
+  stock           Int      @default(0)
+  costoSinIVA     Decimal  @db.Decimal(16, 4)
+  pesoAforado     Decimal  @db.Decimal(10, 3) @default(0)
+  stockValorizado Decimal  @db.Decimal(18, 4) @default(0)
+  updatedAt       DateTime @default(now())
+}
+
+/// Metadata de la última carga de report21 (fila única id = 1).
+/// `moldeFileId`: id en Drive del .xlsx subido, usado como molde para exportar
+/// a Google Sheets conservando el formato/fórmulas originales.
+model Report21Upload {
+  id                Int      @id @default(1)
+  fuente            String
+  filas             Int
+  moldeFileId       String?
+  livePlanillaId    String?
+  livePlanillaTitulo String?
+  planillaColsJson  Json     @default("{}")
+  skuRowMapJson     Json     @default("{}")
+  createdAt         DateTime @default(now())
 }

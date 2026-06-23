@@ -7,9 +7,11 @@ export const Header = () => {
   const pathname = usePathname() || "";
   const seccion = pathname.startsWith("/corpo")
     ? "Corpo"
-    : pathname.startsWith("/admin")
-      ? "Admin"
-      : "Compras";
+    : pathname.startsWith("/tiendas")
+      ? "Tiendas"
+      : pathname.startsWith("/admin")
+        ? "Admin"
+        : "Compras";
 
   return (
     <header className="w-full bg-[#0D1829] border-b border-white/[0.06] sticky top-0 z-40">

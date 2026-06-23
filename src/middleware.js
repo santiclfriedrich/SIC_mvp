@@ -40,6 +40,20 @@ export async function middleware(req) {
     }
   }
 
+  // Usuarios TIENDAS sólo pueden acceder a /tiendas/* y a sus APIs.
+  if (token.role === "TIENDAS") {
+    const tiendasAllowed =
+      pathname.startsWith("/tiendas") ||
+      pathname.startsWith("/api/tiendas") ||
+      pathname.startsWith("/api/auth");
+    if (!tiendasAllowed) {
+      if (isApi) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/tiendas", req.url));
+    }
+  }
+
   // Rutas /admin/* exigen rol ADMIN.
   if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
     if (isApi) {
@@ -51,6 +65,16 @@ export async function middleware(req) {
   // Rutas /corpo/* y /api/corpo/* exigen rol CORPO o ADMIN.
   const isCorpoPath = pathname.startsWith("/corpo") || pathname.startsWith("/api/corpo");
   if (isCorpoPath && token.role !== "CORPO" && token.role !== "ADMIN") {
+    if (isApi) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  // Rutas /tiendas/* y /api/tiendas/* exigen rol TIENDAS o ADMIN.
+  const isTiendasPath =
+    pathname.startsWith("/tiendas") || pathname.startsWith("/api/tiendas");
+  if (isTiendasPath && token.role !== "TIENDAS" && token.role !== "ADMIN") {
     if (isApi) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

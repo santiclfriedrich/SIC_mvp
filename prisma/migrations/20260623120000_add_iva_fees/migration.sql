@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "PricingProduct" ADD COLUMN "ivaCoef" DECIMAL(6,4) NOT NULL DEFAULT 1.21;
+ALTER TABLE "PricingProduct" ADD COLUMN "feesJson" JSONB NOT NULL DEFAULT '{}';
+
+-- AlterTable
+ALTER TABLE "Report21Row" ADD COLUMN "ivaCoef" DECIMAL(6,4) NOT NULL DEFAULT 1.21;
