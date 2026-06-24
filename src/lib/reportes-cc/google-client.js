@@ -124,6 +124,36 @@ export async function listarSheets(spreadsheetId) {
 }
 
 /**
+ * Copia una fila completa (fórmulas + formato) a otra fila dentro de la misma
+ * hoja. `srcRow` / `dstRow` son números de fila 1-based.
+ */
+export async function copiarFila(spreadsheetId, sheetId, srcRow, dstRow) {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          copyPaste: {
+            source: {
+              sheetId,
+              startRowIndex: srcRow - 1,
+              endRowIndex: srcRow,
+            },
+            destination: {
+              sheetId,
+              startRowIndex: dstRow - 1,
+              endRowIndex: dstRow,
+            },
+            pasteType: "PASTE_NORMAL",
+          },
+        },
+      ],
+    },
+  });
+}
+
+/**
  * Devuelve el nombre actual del archivo en Drive.
  * Devuelve null si el archivo ya no existe o no es accesible.
  */
@@ -200,6 +230,21 @@ export async function leerRango(spreadsheetId, rangoA1) {
   const sheets = getSheetsClient();
   const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: rangoA1 });
   return res.data.values || [];
+}
+
+/**
+ * Lee varios rangos en una sola llamada (batchGet). Devuelve los valueRanges en
+ * el mismo orden. Usa UNFORMATTED_VALUE (números nativos, fórmulas ya resueltas).
+ */
+export async function leerRangos(spreadsheetId, ranges) {
+  if (!ranges || ranges.length === 0) return [];
+  const sheets = getSheetsClient();
+  const res = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId,
+    ranges,
+    valueRenderOption: "UNFORMATTED_VALUE",
+  });
+  return res.data.valueRanges || [];
 }
 
 /**

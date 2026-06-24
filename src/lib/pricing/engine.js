@@ -103,13 +103,16 @@ export function computeProduct(producto, config = DEFAULT_CONFIG) {
       nombre: storeCfg.nombre,
       precio1Pago: precio1 || null,
       renta1Pago: null,
+      fee1Pago: null, // fee c/IVA resuelto al precio de 1 pago (para escribir en la planilla)
       precio3CSI: null,
       renta3CSI: null,
       tres3csiIndependiente: false, // true si el 3CSI fue editado a mano
     };
 
     if (precio1 > 0 && storeCfg.pagos["1pago"]) {
-      fila.renta1Pago = forwardStore(storeCfg, "1pago", producto, precio1, config).rentaPct;
+      const f = forwardStore(storeCfg, "1pago", producto, precio1, config);
+      fila.renta1Pago = f.rentaPct;
+      fila.fee1Pago = f.fee;
     }
 
     // 3 CSI: override editado a mano si existe; si no, derivado del 1 pago × coef.

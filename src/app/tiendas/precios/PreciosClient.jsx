@@ -44,6 +44,17 @@ export function PreciosClient() {
   const [upload, setUpload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [syncWarn, setSyncWarn] = useState(null);
+
+  // Muestra (o limpia) un aviso si la sincronización con la planilla viva falló.
+  function revisarSync(j) {
+    const s = j?.sync;
+    if (s && !s.ok && s.motivo && s.motivo !== "sin planilla viva") {
+      setSyncWarn(`No se pudo escribir en la planilla viva: ${s.motivo}`);
+    } else {
+      setSyncWarn(null);
+    }
+  }
 
   async function cargarTodo() {
     setLoading(true);
@@ -87,6 +98,7 @@ export function PreciosClient() {
       alert(j.error || "Error al guardar");
       return;
     }
+    revisarSync(j);
     // Saca el draft (ya está persistido) y mergea el producto devuelto.
     setDrafts((d) => d.filter((x) => x.sku !== sku));
     setProductos((prev) => {
@@ -107,6 +119,7 @@ export function PreciosClient() {
       alert(j.error || "Error al cambiar LP");
       return;
     }
+    revisarSync(j);
     setDrafts((d) => d.filter((x) => x.sku !== sku));
     setProductos((prev) => {
       const otros = prev.filter((x) => x.sku !== sku);
@@ -141,9 +154,16 @@ export function PreciosClient() {
         </div>
       )}
 
+      {syncWarn && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm flex items-start justify-between gap-3">
+          <span>⚠️ {syncWarn} (tu cambio sí se guardó en la web).</span>
+          <button onClick={() => setSyncWarn(null)} className="text-amber-600 hover:text-amber-800 font-medium">✕</button>
+        </div>
+      )}
+
       <Report21Card upload={upload} onUploaded={cargarTodo} />
 
-      <PlanillaVivaCard />
+      <PlanillaVivaCard onSynced={cargarTodo} />
 
       {config && (
         <AddSkuBar
@@ -248,9 +268,11 @@ function Report21Card({ upload, onUploaded }) {
 }
 
 /* ----------------------------- planilla viva ----------------------------- */
-function PlanillaVivaCard() {
+function PlanillaVivaCard({ onSynced }) {
   const [estado, setEstado] = useState(null); // { existe, url, skus, tieneMolde }
   const [busy, setBusy] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [msg, setMsg] = useState(null);
   const [err, setErr] = useState(null);
 
   async function cargar() {
@@ -266,6 +288,7 @@ function PlanillaVivaCard() {
   async function crear() {
     setBusy(true);
     setErr(null);
+    setMsg(null);
     try {
       const r = await fetch("/api/tiendas/planilla-viva", { method: "POST" });
       const j = await r.json();
@@ -275,6 +298,25 @@ function PlanillaVivaCard() {
       setErr("Error de red: " + e.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function sincronizar() {
+    setSyncing(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/tiendas/planilla-viva/sync", { method: "POST" });
+      const j = await r.json();
+      if (!r.ok) setErr(j.error || "Error al sincronizar");
+      else {
+        setMsg(j.actualizados > 0 ? `${j.actualizados} SKU(s) actualizados desde la planilla.` : "La web ya estaba al día.");
+        onSynced?.();
+      }
+    } catch (e) {
+      setErr("Error de red: " + e.message);
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -296,6 +338,14 @@ function PlanillaVivaCard() {
             <a href={estado.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0F766E] hover:underline font-medium">
               Abrir planilla viva →
             </a>
+            <button
+              onClick={sincronizar}
+              disabled={syncing}
+              className="px-3 py-1.5 rounded-lg border border-[#0F766E] text-[#0F766E] text-xs font-medium hover:bg-[#0F766E]/5 disabled:opacity-50"
+              title="Trae a la web los precios que editaste directamente en el Sheet"
+            >
+              {syncing ? "Sincronizando…" : "↓ Traer cambios del Sheet"}
+            </button>
             <button
               onClick={crear}
               disabled={busy}
@@ -322,6 +372,7 @@ function PlanillaVivaCard() {
           </>
         )}
       </div>
+      {msg && <p className="text-xs text-emerald-700 mt-2">{msg}</p>}
       {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
     </div>
   );

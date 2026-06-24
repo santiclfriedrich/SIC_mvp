@@ -2,20 +2,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTiendas, productToPlain, withComputed } from "@/lib/pricing/server";
 import { getPricingConfig } from "@/lib/pricing/config";
-import { escribirFilaEnViva } from "@/lib/pricing/sheet-sync";
+import { sincronizarFila } from "@/lib/pricing/sheet-sync";
 
 export const runtime = "nodejs";
 
 // Responde con el producto calculado y, best-effort, sincroniza su fila en la
-// planilla viva (si existe). Nunca falla el guardado por un error de Sheets.
+// planilla viva (la escribe o la agrega). Nunca falla el guardado por Sheets.
 async function responder(prod, config) {
   const computed = withComputed(productToPlain(prod), config);
   let sync = null;
   try {
-    const meta = await prisma.report21Upload.findUnique({ where: { id: 1 } });
-    sync = await escribirFilaEnViva(meta, computed);
+    sync = await sincronizarFila(computed);
   } catch (e) {
-    sync = { ok: false, motivo: e.message };
+    console.error("[tiendas/sync] Error sincronizando", computed.sku, "→", e?.message, e?.stack);
+    if (e?.response?.data) console.error("[tiendas/sync] Google API:", JSON.stringify(e.response.data));
+    sync = { ok: false, motivo: e?.message || "error desconocido" };
   }
   return NextResponse.json({ ok: true, producto: computed, sync });
 }
