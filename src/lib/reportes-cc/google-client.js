@@ -99,15 +99,22 @@ export async function batchUpdate(spreadsheetId, requests) {
 
 /**
  * Escribe valores en un rango (A1 notation). Equivalente a setValues() del Script.
+ * `valueInputOption`: "USER_ENTERED" (default, parsea números/fórmulas) o "RAW".
  */
-export async function escribirValores(spreadsheetId, rangoA1, valores) {
+export async function escribirValores(spreadsheetId, rangoA1, valores, valueInputOption = "USER_ENTERED") {
   const sheets = getSheetsClient();
   await sheets.spreadsheets.values.update({
     spreadsheetId,
     range: rangoA1,
-    valueInputOption: "USER_ENTERED",
+    valueInputOption,
     requestBody: { values: valores },
   });
+}
+
+/** Limpia (vacía) el contenido de un rango / hoja entera (A1 notation). */
+export async function limpiarValores(spreadsheetId, rangoA1) {
+  const sheets = getSheetsClient();
+  await sheets.spreadsheets.values.clear({ spreadsheetId, range: rangoA1 });
 }
 
 /**

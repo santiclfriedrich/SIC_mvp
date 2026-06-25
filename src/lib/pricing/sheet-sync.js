@@ -15,6 +15,8 @@ import {
   valoresBatchUpdate,
   copiarFila,
   batchUpdate,
+  escribirValores,
+  limpiarValores,
 } from "@/lib/reportes-cc/google-client";
 
 // Índice de columna (0-based) → letra A1 (119 → "DP").
@@ -298,6 +300,36 @@ export async function limpiarFilaEnViva(sku) {
   }
   await prisma.report21Upload.update({ where: { id: 1 }, data: { skuRowMapJson: nuevoMapa } });
   return { ok: true, fila };
+}
+
+/**
+ * Reemplaza el contenido de la pestaña "report21" de la planilla viva con la
+ * matriz nueva (borra todo lo anterior y pega lo nuevo). `rowsMatrix` es un
+ * array de filas (la hoja report21 del archivo subido, header incluido).
+ * Best-effort; escribe en chunks (RAW para no interpretar "=" ni reformatear).
+ */
+export async function reemplazarReport21EnViva(rowsMatrix) {
+  const meta = await prisma.report21Upload.findUnique({ where: { id: 1 } });
+  if (!meta?.livePlanillaId) return { ok: false, motivo: "sin planilla viva" };
+  if (!Array.isArray(rowsMatrix) || rowsMatrix.length === 0) {
+    return { ok: false, motivo: "sin datos report21" };
+  }
+
+  const sheets = await listarSheets(meta.livePlanillaId);
+  const titulo = Object.keys(sheets).find((t) => /report\s*21/i.test(t));
+  if (!titulo) return { ok: false, motivo: "la planilla viva no tiene hoja report21" };
+  const ref = sheetRef(titulo);
+
+  // 1) borra todo el contenido anterior de la hoja.
+  await limpiarValores(meta.livePlanillaId, ref);
+
+  // 2) pega la matriz nueva en chunks de filas.
+  const CHUNK = 2000;
+  for (let i = 0; i < rowsMatrix.length; i += CHUNK) {
+    const chunk = rowsMatrix.slice(i, i + CHUNK);
+    await escribirValores(meta.livePlanillaId, `${ref}!A${i + 1}`, chunk, "RAW");
+  }
+  return { ok: true, hoja: titulo, filas: rowsMatrix.length };
 }
 
 /**

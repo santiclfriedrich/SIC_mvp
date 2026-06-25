@@ -6,7 +6,7 @@ import { parseReport21 } from "@/lib/pricing/report21";
 import { parsePlanillaPrecios } from "@/lib/pricing/planilla";
 import { subirXlsx, trashearArchivo } from "@/lib/reportes-cc/google-client";
 import { getPricingConfig } from "@/lib/pricing/config";
-import { empujarTodosEnViva } from "@/lib/pricing/sheet-sync";
+import { empujarTodosEnViva, reemplazarReport21EnViva } from "@/lib/pricing/sheet-sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -70,7 +70,16 @@ export async function POST(req) {
 
   // ---------- 1) Snapshot del report21 (catálogo base) ----------
   let filasReport21 = 0;
+  let r21matrix = null; // matriz cruda para pegar en la pestaña report21 de la viva
   if (report21Name) {
+    // Matriz cruda completa (con headers) → para reemplazar la pestaña report21.
+    // Dates (cellDates) → string para que la API los acepte.
+    r21matrix = XLSX.utils
+      .sheet_to_json(wb.Sheets[report21Name], { header: 1, defval: "", raw: true })
+      .map((row) =>
+        (row || []).map((c) => (c instanceof Date ? c.toISOString().slice(0, 10) : c))
+      );
+
     const parsed = parseReport21(await readSheet(wb, report21Name));
     if (parsed.total > 0) {
       const data = [...parsed.porSku.values()].map((p) => ({
@@ -183,7 +192,19 @@ export async function POST(req) {
     create: { id: 1, fuente: fileName, filas: filasReport21, moldeFileId },
   });
 
-  // ---------- 4) Reflejar en la planilla viva (costo/stock/IVA actualizados) ----------
+  // ---------- 4) Reflejar en la planilla viva ----------
+  // 4a) Reemplaza la pestaña report21 (borra lo viejo, pega lo nuevo).
+  let report21EnSheet = null;
+  if (r21matrix) {
+    try {
+      const res = await reemplazarReport21EnViva(r21matrix);
+      if (res.ok) report21EnSheet = { filas: res.filas };
+      else console.warn("[report21] pestaña report21 no actualizada:", res.motivo);
+    } catch (e) {
+      console.error("[report21] Error reemplazando pestaña report21:", e?.message);
+    }
+  }
+  // 4b) Reescribe en la hoja principal el costo/stock/IVA actualizados.
   let planillaActualizada = null;
   try {
     const config = await getPricingConfig();
@@ -202,6 +223,7 @@ export async function POST(req) {
     actualizados,
     moldeGuardado: !!moldeFileId,
     moldeError,
+    report21EnSheet,
     planillaActualizada,
     hojas: { report21: report21Name || null, planilla: planillaName || null },
   });

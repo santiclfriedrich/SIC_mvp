@@ -222,6 +222,7 @@ function Report21Card({ upload, onUploaded }) {
       else {
         const partes = [];
         if (j.filasReport21) partes.push(`${j.filasReport21} SKUs en catálogo (report21)`);
+        if (j.report21EnSheet) partes.push(`pestaña report21 del Sheet actualizada (${j.report21EnSheet.filas} filas)`);
         if (j.preciosImportados)
           partes.push(
             `${j.preciosImportados} con precio (${j.creados} nuevos, ${j.actualizados} actualizados)`
