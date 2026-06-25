@@ -5,6 +5,8 @@ import { requireTiendas } from "@/lib/pricing/server";
 import { parseReport21 } from "@/lib/pricing/report21";
 import { parsePlanillaPrecios } from "@/lib/pricing/planilla";
 import { subirXlsx, trashearArchivo } from "@/lib/reportes-cc/google-client";
+import { getPricingConfig } from "@/lib/pricing/config";
+import { empujarTodosEnViva } from "@/lib/pricing/sheet-sync";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -158,20 +160,21 @@ export async function POST(req) {
   }
 
   // ---------- 3) Guardar la planilla como MOLDE en Drive (para export a Sheets) ----------
-  // Conserva el .xlsx tal cual; reemplaza el molde anterior. Si Drive falla, no
-  // rompemos la carga: el export a Sheets simplemente quedará deshabilitado.
-  let moldeFileId = null;
-  let moldeError = null;
+  // SÓLO reemplazamos el molde si el archivo trae la HOJA PRINCIPAL (planilla
+  // completa). Si subís un report21 "pelado" (sólo la hoja report21), NO se pisa
+  // el molde existente — así no se rompe la planilla viva ni el export.
   const prev = await prisma.report21Upload.findUnique({ where: { id: 1 } });
-  try {
-    moldeFileId = await subirXlsx(buffer, `MOLDE ${fileName}`);
-    if (prev?.moldeFileId) {
-      await trashearArchivo(prev.moldeFileId).catch(() => {});
+  let moldeFileId = prev?.moldeFileId || null;
+  let moldeError = null;
+  if (planillaName) {
+    try {
+      const nuevoMolde = await subirXlsx(buffer, `MOLDE ${fileName}`);
+      if (prev?.moldeFileId) await trashearArchivo(prev.moldeFileId).catch(() => {});
+      moldeFileId = nuevoMolde;
+    } catch (e) {
+      console.error("Error subiendo molde a Drive:", e);
+      moldeError = e.message;
     }
-  } catch (e) {
-    console.error("Error subiendo molde a Drive:", e);
-    moldeError = e.message;
-    moldeFileId = prev?.moldeFileId || null; // conservamos el anterior si existía
   }
 
   await prisma.report21Upload.upsert({
@@ -179,6 +182,16 @@ export async function POST(req) {
     update: { fuente: fileName, filas: filasReport21, moldeFileId, createdAt: new Date() },
     create: { id: 1, fuente: fileName, filas: filasReport21, moldeFileId },
   });
+
+  // ---------- 4) Reflejar en la planilla viva (costo/stock/IVA actualizados) ----------
+  let planillaActualizada = null;
+  try {
+    const config = await getPricingConfig();
+    const res = await empujarTodosEnViva(config);
+    if (res.ok) planillaActualizada = { escritos: res.escritos, agregados: res.agregados };
+  } catch (e) {
+    console.error("[report21] No se pudo actualizar la planilla viva:", e?.message);
+  }
 
   return NextResponse.json({
     ok: true,
@@ -189,6 +202,7 @@ export async function POST(req) {
     actualizados,
     moldeGuardado: !!moldeFileId,
     moldeError,
+    planillaActualizada,
     hojas: { report21: report21Name || null, planilla: planillaName || null },
   });
 }

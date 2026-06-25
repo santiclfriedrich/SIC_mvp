@@ -102,6 +102,36 @@ export async function POST(req) {
     return NextResponse.json({ error: `${store} no tiene 3 CSI` }, { status: 400 });
   }
 
+  // Aplica el precio editado sobre el estado actual de precios/precios3 del SKU.
+  function mergePrecios(prodActual) {
+    const precios = { ...(prodActual?.preciosJson || {}) };
+    const precios3 = { ...(prodActual?.precios3Json || {}) };
+    if (pago === "1pago") {
+      // Editar 1 pago: setea el precio y RESETEA el 3CSI a "derivado".
+      if (precio == null) delete precios[store];
+      else precios[store] = precio;
+      delete precios3[store];
+    } else {
+      // Editar 3CSI: queda independiente (override). No toca el 1 pago.
+      if (precio == null) delete precios3[store];
+      else precios3[store] = precio;
+    }
+    return { precios, precios3 };
+  }
+
+  async function actualizar() {
+    const actual = await prisma.pricingProduct.findUnique({ where: { sku } });
+    const { precios, precios3 } = mergePrecios(actual);
+    return prisma.pricingProduct.update({
+      where: { sku },
+      data: {
+        preciosJson: precios,
+        precios3Json: precios3,
+        ...(typeof body?.esLP === "boolean" ? { esLP: body.esLP } : {}),
+      },
+    });
+  }
+
   let prod = await prisma.pricingProduct.findUnique({ where: { sku } });
 
   if (!prod) {
@@ -112,45 +142,32 @@ export async function POST(req) {
         { status: 404 }
       );
     }
-    prod = await prisma.pricingProduct.create({
-      data: {
-        sku,
-        descripcion: base.descripcion,
-        marca: base.marca,
-        esLP: typeof body?.esLP === "boolean" ? body.esLP : base.esLP,
-        ivaCoef: base.ivaCoef,
-        stock: base.stock,
-        costoSinIVA: base.costoSinIVA,
-        pesoAforado: base.pesoAforado,
-        stockValorizado: base.stockValorizado,
-        preciosJson: pago === "1pago" && precio != null ? { [store]: precio } : {},
-        precios3Json: pago === "3csi" && precio != null ? { [store]: precio } : {},
-        report21At: new Date(),
-      },
-    });
-  } else {
-    const precios = { ...(prod.preciosJson || {}) };
-    const precios3 = { ...(prod.precios3Json || {}) };
-
-    if (pago === "1pago") {
-      // Editar 1 pago: setea el precio y RESETEA el 3CSI a "derivado" (saca override).
-      if (precio == null) delete precios[store];
-      else precios[store] = precio;
-      delete precios3[store];
-    } else {
-      // Editar 3CSI: queda independiente (override). No toca el 1 pago.
-      if (precio == null) delete precios3[store];
-      else precios3[store] = precio;
+    const { precios, precios3 } = mergePrecios(null);
+    try {
+      prod = await prisma.pricingProduct.create({
+        data: {
+          sku,
+          descripcion: base.descripcion,
+          marca: base.marca,
+          esLP: typeof body?.esLP === "boolean" ? body.esLP : base.esLP,
+          ivaCoef: base.ivaCoef,
+          stock: base.stock,
+          costoSinIVA: base.costoSinIVA,
+          pesoAforado: base.pesoAforado,
+          stockValorizado: base.stockValorizado,
+          preciosJson: precios,
+          precios3Json: precios3,
+          report21At: new Date(),
+        },
+      });
+    } catch (e) {
+      // Race condition: otro request creó el SKU en paralelo (P2002). Reintento
+      // como update sobre el registro ya existente.
+      if (e?.code === "P2002") prod = await actualizar();
+      else throw e;
     }
-
-    prod = await prisma.pricingProduct.update({
-      where: { sku },
-      data: {
-        preciosJson: precios,
-        precios3Json: precios3,
-        ...(typeof body?.esLP === "boolean" ? { esLP: body.esLP } : {}),
-      },
-    });
+  } else {
+    prod = await actualizar();
   }
 
   return responder(prod, config);

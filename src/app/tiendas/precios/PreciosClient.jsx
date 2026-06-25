@@ -128,8 +128,19 @@ export function PreciosClient() {
   }
 
   async function borrar(sku) {
+    // Si es sólo un draft (nunca persistido), se quita local sin llamar al server.
+    const esDraft = drafts.some((x) => x.sku === sku) && !productos.some((x) => x.sku === sku);
     setDrafts((d) => d.filter((x) => x.sku !== sku));
-    await fetch(`/api/tiendas/productos/${encodeURIComponent(sku)}`, { method: "DELETE" });
+    if (esDraft) return;
+
+    const { ok, data } = await safeFetch(`/api/tiendas/productos/${encodeURIComponent(sku)}`, {
+      method: "DELETE",
+    });
+    if (!ok) {
+      setSyncWarn(`No se pudo borrar "${sku}": ${data.error || "error"}.`);
+      return; // no lo saco de la lista si el borrado falló
+    }
+    revisarSync(data);
     setProductos((prev) => prev.filter((x) => x.sku !== sku));
   }
 
@@ -395,14 +406,17 @@ function AddSkuBar({ onAdd, yaEnLista, stores }) {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/tiendas/productos/${encodeURIComponent(s)}`);
-      const j = await res.json();
-      if (!res.ok && !j.base) {
-        setErr(j.error || "SKU no encontrado en el report21");
-      } else {
-        const prod = j.producto || j.base;
+      const { ok, status, data } = await safeFetch(`/api/tiendas/productos/${encodeURIComponent(s)}`);
+      const prod = data.producto || data.base;
+      if (prod) {
         onAdd(prod);
         setSku("");
+      } else if (status === 404) {
+        setErr(
+          `"${s}" no está en el report21. Subí el report21 actualizado (que incluya ese SKU) y volvé a intentar.`
+        );
+      } else {
+        setErr(data.error || (ok ? "No se encontró el SKU" : `Error ${status}`));
       }
     } catch (e2) {
       setErr("Error de red: " + e2.message);

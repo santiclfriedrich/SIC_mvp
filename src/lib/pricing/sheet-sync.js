@@ -14,6 +14,7 @@ import {
   leerRangos,
   valoresBatchUpdate,
   copiarFila,
+  batchUpdate,
 } from "@/lib/reportes-cc/google-client";
 
 // Índice de columna (0-based) → letra A1 (119 → "DP").
@@ -49,6 +50,9 @@ function filaData(cols, titulo, fila, computed) {
   set(cols.descripcion, computed.descripcion || "");
   set(cols.costo, computed.costoSinIVA);
   set(cols.peso, computed.pesoAforado);
+  set(cols.stock, computed.stock != null ? computed.stock : 0);
+  // stock valorizado = stock × costo s/IVA (en la planilla es un valor, no fórmula).
+  set(cols.stockVal, (Number(computed.stock) || 0) * (Number(computed.costoSinIVA) || 0));
   set(cols.iva, _num(computed.ivaCoef) > 0 ? computed.ivaCoef : 1.21);
   set(cols.iibLP, computed.esLP ? 0.055 : 0);
   set(cols.ingresosBrutos, computed.esLP ? 0 : 0.055);
@@ -69,6 +73,7 @@ function computedDeProducto(p, config) {
     ivaCoef: _num(p.ivaCoef) > 0 ? _num(p.ivaCoef) : 1.21,
     costoSinIVA: _num(p.costoSinIVA),
     pesoAforado: _num(p.pesoAforado),
+    stock: p.stock ?? 0,
     precios: p.preciosJson || {},
     precios3: p.precios3Json || {},
     fees: p.feesJson || {},
@@ -126,6 +131,8 @@ export async function crearPlanillaViva() {
     peso: PLANILLA_MAP.pesoAforado,
     iva: PLANILLA_MAP.ivaCoef,
     descripcion: PLANILLA_MAP.descripcion,
+    stock: PLANILLA_MAP.stock,
+    stockVal: PLANILLA_MAP.stockValorizado,
   };
   for (const [k, alias] of Object.entries(baseMap)) {
     const i = find(alias);
@@ -258,6 +265,77 @@ export async function sincronizarFila(computed) {
   const row = (meta.skuRowMapJson || {})[computed.sku];
   if (row) return escribirFilaEnViva(meta, computed);
   return agregarFilaEnViva(meta, computed);
+}
+
+/**
+ * Borrar SKU: ELIMINA la fila física de la planilla viva y reajusta el mapa
+ * (toda fila por debajo de la borrada baja 1). Saca el SKU del mapa. Best-effort.
+ *
+ * El reajuste es lo que hace seguro borrar la fila: `deleteDimension` corre las
+ * filas de abajo hacia arriba, así que descontamos 1 a cada entrada con row > fila.
+ */
+export async function limpiarFilaEnViva(sku) {
+  const meta = await prisma.report21Upload.findUnique({ where: { id: 1 } });
+  if (!meta?.livePlanillaId) return { ok: false, motivo: "sin planilla viva" };
+  const skuRowMap = { ...(meta.skuRowMapJson || {}) };
+  const fila = skuRowMap[sku];
+  if (!fila) return { ok: false, motivo: "SKU no está en la planilla" };
+
+  const cols = meta.planillaColsJson || {};
+  const gid = cols._mainGid;
+  if (gid == null) return { ok: false, motivo: "molde sin gid" };
+
+  // Borra la fila física.
+  await batchUpdate(meta.livePlanillaId, [
+    { deleteDimension: { range: { sheetId: gid, dimension: "ROWS", startIndex: fila - 1, endIndex: fila } } },
+  ]);
+
+  // Reajusta el mapa: saca el SKU y baja 1 a las filas por debajo.
+  const nuevoMapa = {};
+  for (const [s, r] of Object.entries(skuRowMap)) {
+    if (s === sku) continue;
+    nuevoMapa[s] = r > fila ? r - 1 : r;
+  }
+  await prisma.report21Upload.update({ where: { id: 1 }, data: { skuRowMapJson: nuevoMapa } });
+  return { ok: true, fila };
+}
+
+/**
+ * Empuja TODOS los PricingProduct a la planilla viva (escribe los que tienen
+ * fila, agrega los que no). Se usa tras subir el report21 para reflejar
+ * costo/stock/IVA actualizados. Best-effort; batch chunked.
+ */
+export async function empujarTodosEnViva(config) {
+  const meta = await prisma.report21Upload.findUnique({ where: { id: 1 } });
+  if (!meta?.livePlanillaId) return { ok: false, motivo: "sin planilla viva" };
+
+  const cols = meta.planillaColsJson || {};
+  const titulo = meta.livePlanillaTitulo;
+  const gid = cols._mainGid;
+  const tpl = cols._templateRow;
+  const skuRowMap = { ...(meta.skuRowMapJson || {}) };
+  let nextRow = Object.keys(skuRowMap).length ? Math.max(...Object.values(skuRowMap)) : tpl;
+
+  const productos = await prisma.pricingProduct.findMany();
+  const data = [];
+  let agregados = 0;
+  for (const p of productos) {
+    const computed = computedDeProducto(p, config);
+    let fila = skuRowMap[p.sku];
+    if (!fila) {
+      nextRow += 1;
+      fila = nextRow;
+      await copiarFila(meta.livePlanillaId, gid, tpl, fila);
+      skuRowMap[p.sku] = fila;
+      agregados++;
+    }
+    data.push(...filaData(cols, titulo, fila, computed));
+  }
+  for (let i = 0; i < data.length; i += 400) {
+    await valoresBatchUpdate(meta.livePlanillaId, data.slice(i, i + 400));
+  }
+  await prisma.report21Upload.update({ where: { id: 1 }, data: { skuRowMapJson: skuRowMap } });
+  return { ok: true, escritos: productos.length, agregados };
 }
 
 const r2 = (n) => Math.round(Number(n) || 0); // redondeo a entero para comparar precios

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireTiendas, productToPlain, withComputed } from "@/lib/pricing/server";
 import { getPricingConfig } from "@/lib/pricing/config";
+import { limpiarFilaEnViva } from "@/lib/pricing/sheet-sync";
 
 export const runtime = "nodejs";
 
@@ -58,10 +59,18 @@ export async function DELETE(_req, { params }) {
   if (auth.error) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   const { sku } = await params;
+  const skuNorm = String(sku).trim();
   try {
-    await prisma.pricingProduct.delete({ where: { sku: String(sku).trim() } });
+    await prisma.pricingProduct.delete({ where: { sku: skuNorm } });
   } catch {
     return NextResponse.json({ error: "No existe" }, { status: 404 });
   }
-  return NextResponse.json({ ok: true });
+  // Limpia su fila en la planilla viva (best-effort).
+  let sync = null;
+  try {
+    sync = await limpiarFilaEnViva(skuNorm);
+  } catch (e) {
+    sync = { ok: false, motivo: e?.message };
+  }
+  return NextResponse.json({ ok: true, sync });
 }
