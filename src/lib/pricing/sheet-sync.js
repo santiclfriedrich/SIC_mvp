@@ -333,11 +333,11 @@ export async function reemplazarReport21EnViva(rowsMatrix) {
 }
 
 /**
- * Empuja TODOS los PricingProduct a la planilla viva (escribe los que tienen
- * fila, agrega los que no). Se usa tras subir el report21 para reflejar
- * costo/stock/IVA actualizados. Best-effort; batch chunked.
+ * Empuja una lista de PricingProduct a la planilla viva (escribe los que tienen
+ * fila, agrega los que no). Best-effort; batch chunked. Si `productos` es null,
+ * empuja TODOS.
  */
-export async function empujarTodosEnViva(config) {
+export async function empujarEnViva(productos, config) {
   const meta = await prisma.report21Upload.findUnique({ where: { id: 1 } });
   if (!meta?.livePlanillaId) return { ok: false, motivo: "sin planilla viva" };
 
@@ -348,10 +348,10 @@ export async function empujarTodosEnViva(config) {
   const skuRowMap = { ...(meta.skuRowMapJson || {}) };
   let nextRow = Object.keys(skuRowMap).length ? Math.max(...Object.values(skuRowMap)) : tpl;
 
-  const productos = await prisma.pricingProduct.findMany();
+  const lista = productos || (await prisma.pricingProduct.findMany());
   const data = [];
   let agregados = 0;
-  for (const p of productos) {
+  for (const p of lista) {
     const computed = computedDeProducto(p, config);
     let fila = skuRowMap[p.sku];
     if (!fila) {
@@ -367,7 +367,12 @@ export async function empujarTodosEnViva(config) {
     await valoresBatchUpdate(meta.livePlanillaId, data.slice(i, i + 400));
   }
   await prisma.report21Upload.update({ where: { id: 1 }, data: { skuRowMapJson: skuRowMap } });
-  return { ok: true, escritos: productos.length, agregados };
+  return { ok: true, escritos: lista.length, agregados };
+}
+
+/** Empuja TODOS los productos (tras subir report21). */
+export function empujarTodosEnViva(config) {
+  return empujarEnViva(null, config);
 }
 
 const r2 = (n) => Math.round(Number(n) || 0); // redondeo a entero para comparar precios

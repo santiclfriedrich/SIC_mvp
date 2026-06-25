@@ -176,13 +176,7 @@ export function PreciosClient() {
 
       <PlanillaVivaCard onSynced={cargarTodo} />
 
-      {config && (
-        <AddSkuBar
-          stores={stores}
-          yaEnLista={(sku) => filas.some((f) => f.sku === sku)}
-          onAdd={(prod) => setDrafts((d) => [{ ...prod, _draft: true }, ...d])}
-        />
-      )}
+      {config && <AddSkuBar onDone={cargarTodo} />}
 
       <ExportsBar productos={productos} />
 
@@ -390,34 +384,33 @@ function PlanillaVivaCard({ onSynced }) {
   );
 }
 
-/* ----------------------------- agregar SKU ----------------------------- */
-function AddSkuBar({ onAdd, yaEnLista, stores }) {
-  const [sku, setSku] = useState("");
+/* ----------------------------- agregar SKU(s) con auto-precio ----------------------------- */
+function AddSkuBar({ onDone }) {
+  const [texto, setTexto] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
+  const [res, setRes] = useState(null); // { creados, actualizados, noEncontrados }
+
+  const skus = texto.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean);
 
   async function agregar(e) {
     e.preventDefault();
-    const s = sku.trim();
-    if (!s) return;
-    if (yaEnLista(s)) {
-      setErr("Ese SKU ya está en la tabla.");
-      return;
-    }
+    if (!skus.length) return;
     setBusy(true);
     setErr(null);
+    setRes(null);
     try {
-      const { ok, status, data } = await safeFetch(`/api/tiendas/productos/${encodeURIComponent(s)}`);
-      const prod = data.producto || data.base;
-      if (prod) {
-        onAdd(prod);
-        setSku("");
-      } else if (status === 404) {
-        setErr(
-          `"${s}" no está en el report21. Subí el report21 actualizado (que incluya ese SKU) y volvé a intentar.`
-        );
+      const { ok, data } = await safeFetch("/api/tiendas/productos/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ skus }),
+      });
+      if (!ok) {
+        setErr(data.error || "Error al procesar");
       } else {
-        setErr(data.error || (ok ? "No se encontró el SKU" : `Error ${status}`));
+        setRes(data);
+        setTexto("");
+        onDone?.();
       }
     } catch (e2) {
       setErr("Error de red: " + e2.message);
@@ -428,29 +421,39 @@ function AddSkuBar({ onAdd, yaEnLista, stores }) {
 
   return (
     <form onSubmit={agregar} className="bg-white rounded-xl border border-black/[0.06] p-4">
-      <div className="flex items-end gap-3 flex-wrap">
-        <div>
-          <label className="block text-xs font-medium text-[#625F5A] mb-1">
-            Agregar SKU a la tabla
-          </label>
-          <input
-            value={sku}
-            onChange={(e) => { setSku(e.target.value); setErr(null); }}
-            placeholder="Ej. MONKAN0034"
-            className="px-3 py-2 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm outline-none focus:border-[#14B8A6] w-56"
-          />
+      <label className="block text-xs font-medium text-[#625F5A] mb-1">
+        Agregar SKU(s) con precio automático 4–5%
+      </label>
+      <div className="flex items-start gap-3 flex-wrap">
+        <textarea
+          value={texto}
+          onChange={(e) => { setTexto(e.target.value); setErr(null); setRes(null); }}
+          placeholder="Pegá uno o varios SKUs (uno por línea, o separados por coma/espacio). Ej:&#10;MONKAN0034&#10;MICKAN0002&#10;VENKAN0004"
+          rows={3}
+          className="flex-1 min-w-[260px] px-3 py-2 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm outline-none focus:border-[#14B8A6] font-mono"
+        />
+        <div className="flex flex-col gap-1">
+          <button
+            type="submit"
+            disabled={busy || !skus.length}
+            className="px-4 py-2 rounded-lg bg-[#0F766E] text-white text-sm font-medium hover:bg-[#0d655e] disabled:opacity-50 whitespace-nowrap"
+          >
+            {busy ? "Procesando…" : `Agregar ${skus.length || ""} y autopreciar`}
+          </button>
+          <span className="text-[11px] text-[#9B978F] max-w-[180px]">
+            Trae los datos del report21 y pone precio en todas las tiendas con renta 4–5%.
+          </span>
         </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="px-4 py-2 rounded-lg bg-[#0F766E] text-white text-sm font-medium hover:bg-[#0d655e] disabled:opacity-50"
-        >
-          {busy ? "Buscando…" : "+ Agregar"}
-        </button>
-        <span className="text-xs text-[#9B978F]">
-          Trae los datos del report21 y lo suma a la tabla para que le cargues el precio.
-        </span>
       </div>
+      {res && (
+        <p className="text-xs text-emerald-700 mt-2">
+          OK: {res.creados} nuevos, {res.actualizados} actualizados
+          {res.noEncontrados?.length
+            ? ` · ${res.noEncontrados.length} no estaban en el report21: ${res.noEncontrados.slice(0, 8).join(", ")}${res.noEncontrados.length > 8 ? "…" : ""}`
+            : ""}
+          .
+        </p>
+      )}
       {err && <p className="text-xs text-red-600 mt-2">{err}</p>}
     </form>
   );

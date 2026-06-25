@@ -70,9 +70,10 @@ test("resolveFee: override del SKU gana; si no, regla por peso + < $30.000", () 
   approx(resolveFee(DEFAULT_STORES.icbc, sinFee, 50000, DEFAULT_CONFIG), 0);
 
   // Regla < $30.000: Frávega columna barata, Megatone 0.
-  approx(resolveFee(DEFAULT_STORES.fravega, sinFee, 25000, DEFAULT_CONFIG), 5579);
-  approx(resolveFee(DEFAULT_STORES.megatone, sinFee, 25000, DEFAULT_CONFIG), 0);
-  approx(resolveFee(DEFAULT_STORES.megatone, sinFee, 50000, DEFAULT_CONFIG), 12627.333333333334);
+  approx(resolveFee(DEFAULT_STORES.fravega, sinFee, 25000, DEFAULT_CONFIG), 5579.5);
+  // Megatone: fee CONSTANTE por peso (no varía con el precio).
+  approx(resolveFee(DEFAULT_STORES.megatone, sinFee, 25000, DEFAULT_CONFIG), 12627);
+  approx(resolveFee(DEFAULT_STORES.megatone, sinFee, 50000, DEFAULT_CONFIG), 12627);
   // OnCity 5,2kg < $30.000 → columna barata del tramo [5.01,15] = 4104.5
   approx(resolveFee(DEFAULT_STORES.oncity, { pesoAforado: 5.2 }, 25000, DEFAULT_CONFIG), 4104.5);
 });
