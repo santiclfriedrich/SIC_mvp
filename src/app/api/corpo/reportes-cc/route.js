@@ -76,10 +76,22 @@ export async function POST(req) {
     );
   }
 
+  // Último reporte generado: de ahí se copian las notas (col I) al nuevo.
+  const anterior = await prisma.reporteCC.findFirst({
+    orderBy: { createdAt: "desc" },
+    select: { spreadsheetId: true },
+  });
+
   // Generar el Sheet
   let spreadsheetId, spreadsheetUrl;
   try {
-    const out = await generarSpreadsheet({ clientes, totales, porVendedor, fuente: fileName });
+    const out = await generarSpreadsheet({
+      clientes,
+      totales,
+      porVendedor,
+      fuente: fileName,
+      spreadsheetAnteriorId: anterior?.spreadsheetId,
+    });
     spreadsheetId = out.spreadsheetId;
     spreadsheetUrl = out.spreadsheetUrl;
   } catch (e) {

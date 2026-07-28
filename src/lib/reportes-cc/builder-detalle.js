@@ -6,6 +6,7 @@ import {
   COLORS,
   NF,
   cell,
+  cellTexto,
   fmt,
   updateCellsReq,
   mergeReq,
@@ -15,7 +16,13 @@ import {
   addRowGroupReq,
 } from "./sheets-helpers";
 
-export function buildDetalle(sheetId, clientes) {
+export function buildDetalle(
+  sheetId,
+  clientes,
+  notas = { porCliente: {}, porComprobante: {} }
+) {
+  const notasCliente = notas?.porCliente || {};
+  const notasComprobante = notas?.porComprobante || {};
   const filas = [];
   const groupRanges = []; // {start, end} en 0-indexed para addDimensionGroup
 
@@ -25,7 +32,7 @@ export function buildDetalle(sheetId, clientes) {
       bg: COLORS.titulo, fg: COLORS.white, bold: true, fontSize: 14,
       halign: "CENTER", valign: "MIDDLE",
     })),
-    cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""),
+    cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""),
   ]);
 
   const fecha = new Date().toLocaleString("es-AR", {
@@ -37,10 +44,10 @@ export function buildDetalle(sheetId, clientes) {
       `Generado: ${fecha}. Usá los +/- a la izquierda para colapsar cada cliente.`,
       fmt({ italic: true, fg: COLORS.grayText, fontSize: 9, valign: "MIDDLE" })
     ),
-    cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""),
+    cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""),
   ]);
 
-  filas.push([cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell("")]);
+  filas.push([cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell(""), cell("")]);
 
   // ===== Fila 4: headers =====
   const headerFmt = fmt({
@@ -56,6 +63,7 @@ export function buildDetalle(sheetId, clientes) {
     cell("Fecha Vto.", headerFmt),
     cell("Total (ARS)", headerFmt),
     cell("Saldo Pendiente (ARS)", headerFmt),
+    cell("Notas", headerFmt),
   ]);
 
   // ===== Bloques por cliente =====
@@ -69,6 +77,7 @@ export function buildDetalle(sheetId, clientes) {
     const clienteFmt = fmt({
       bg: COLORS.cliente, fg: COLORS.titulo, bold: true,
     });
+    const notaCliente = notasCliente[String(c.numero ?? "").trim()] || "";
     filas.push([
       cell(String(c.numero ?? ""), fmt({ bg: COLORS.cliente, fg: COLORS.titulo, bold: true, halign: "CENTER" })),
       cell(`${c.nombre ?? ""}  (${c.comprobantes.length} comprob.)`, clienteFmt),
@@ -84,6 +93,8 @@ export function buildDetalle(sheetId, clientes) {
           : 0,
         fmt({ bg: COLORS.cliente, fg: COLORS.titulo, bold: true, halign: "RIGHT", numberFormat: NF.monedaArsSimple })
       ),
+      // Nota del cabezal (matcheada por N° de cliente contra el reporte anterior)
+      cellTexto(notaCliente, fmt({ bg: COLORS.cliente, fg: COLORS.titulo, wrap: "WRAP", valign: "MIDDLE" })),
     ]);
     const headerRowIdx0 = fila1Based - 1; // 0-indexed
     fila1Based++;
@@ -92,6 +103,7 @@ export function buildDetalle(sheetId, clientes) {
     for (let j = 0; j < c.comprobantes.length; j++) {
       const cp = c.comprobantes[j];
       const rowBg = altBg ? { bg: altBg } : {};
+      const notaComp = notasComprobante[String(cp.comprobante ?? "").trim()] || "";
       filas.push([
         cell("", fmt(rowBg)),
         cell("", fmt(rowBg)),
@@ -101,6 +113,8 @@ export function buildDetalle(sheetId, clientes) {
         cell(cp.fecha_pago, fmt({ ...rowBg, halign: "CENTER", numberFormat: NF.fecha, numberFormatType: "DATE" })),
         cell(cp.total, fmt({ ...rowBg, halign: "RIGHT", numberFormat: NF.monedaArs })),
         cell(cp.saldo, fmt({ ...rowBg, halign: "RIGHT", numberFormat: NF.monedaArs })),
+        // Nota del comprobante (matcheada por N° de comprobante contra el reporte anterior)
+        cellTexto(notaComp, fmt({ ...rowBg, wrap: "WRAP", valign: "MIDDLE" })),
       ]);
       fila1Based++;
     }
@@ -125,6 +139,7 @@ export function buildDetalle(sheetId, clientes) {
       `='${HOJA_RESUMEN}'!E${5 + clientes.length}`,
       fmt({ bg: COLORS.total, bold: true, fontSize: 11, halign: "RIGHT", numberFormat: NF.monedaArsSimple })
     ),
+    cell("", totalFmt),
   ]);
 
   // ===== Requests =====
@@ -132,15 +147,15 @@ export function buildDetalle(sheetId, clientes) {
 
   reqs.push(updateCellsReq(sheetId, 0, 0, filas));
 
-  reqs.push(mergeReq(sheetId, 0, 1, 0, 8));  // A1:H1
-  reqs.push(mergeReq(sheetId, 1, 2, 0, 8));  // A2:H2
+  reqs.push(mergeReq(sheetId, 0, 1, 0, 9));  // A1:I1
+  reqs.push(mergeReq(sheetId, 1, 2, 0, 9));  // A2:I2
   reqs.push(mergeReq(sheetId, totalRowIdx0, totalRowIdx0 + 1, 0, 7)); // TOTAL row A:G
 
-  // Bordes alrededor de header + datos + total
-  reqs.push(bordersReq(sheetId, 3, totalRowIdx0 + 1, 0, 8));
+  // Bordes alrededor de header + datos + total (incluye col I "Notas")
+  reqs.push(bordersReq(sheetId, 3, totalRowIdx0 + 1, 0, 9));
 
-  // Anchos de columnas: [85, 300, 170, 170, 100, 100, 140, 150]
-  const widths = [85, 300, 170, 170, 100, 100, 140, 150];
+  // Anchos de columnas: [85, 300, 170, 170, 100, 100, 140, 150, 280]
+  const widths = [85, 300, 170, 170, 100, 100, 140, 150, 280];
   widths.forEach((w, i) => {
     reqs.push(dimensionReq(sheetId, "COLUMNS", i, i + 1, w));
   });

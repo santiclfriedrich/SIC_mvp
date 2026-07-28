@@ -11,6 +11,7 @@ import { HOJA_RESUMEN, HOJA_DETALLE, HOJA_DASHBOARD } from "./config";
 import { buildResumen } from "./builder-resumen";
 import { buildDetalle } from "./builder-detalle";
 import { buildDashboard } from "./builder-dashboard";
+import { leerNotasDetalle } from "./notas-previas";
 
 /**
  * Genera el Spreadsheet completo con las 3 hojas formateadas.
@@ -20,13 +21,18 @@ import { buildDashboard } from "./builder-dashboard";
  *   - totales: {totalDeuda, totalClientes, totalComp, promedio, sinComp}
  *   - porVendedor: [{vendedor, saldo}]
  *   - fuente: nombre del archivo original
+ *   - spreadsheetAnteriorId: (opcional) Sheet del último reporte, del que se
+ *       copian las notas de la col I hacia el reporte nuevo.
  * @returns {Promise<{spreadsheetId, spreadsheetUrl}>}
  */
-export async function generarSpreadsheet({ clientes, totales, porVendedor, fuente }) {
+export async function generarSpreadsheet({ clientes, totales, porVendedor, fuente, spreadsheetAnteriorId }) {
   const fechaTitulo = new Date().toLocaleDateString("es-AR", {
     year: "numeric", month: "2-digit", day: "2-digit",
   });
   const titulo = `Reporte CC — ${fechaTitulo}`;
+
+  // Notas del reporte anterior (col I), para re-inyectarlas por cliente/comprobante.
+  const notas = await leerNotasDetalle(spreadsheetAnteriorId);
 
   // 1) Crear el Spreadsheet vacío en la carpeta destino
   const { spreadsheetId, spreadsheetUrl } = await crearSpreadsheet(titulo);
@@ -47,7 +53,7 @@ export async function generarSpreadsheet({ clientes, totales, porVendedor, fuent
 
   // 4) Construir cada hoja con sus requests
   const reqResumen = buildResumen(ids[HOJA_RESUMEN], clientes, fuente);
-  const reqDetalle = buildDetalle(ids[HOJA_DETALLE], clientes);
+  const reqDetalle = buildDetalle(ids[HOJA_DETALLE], clientes, notas);
   const reqDashboard = buildDashboard(
     ids[HOJA_DASHBOARD],
     clientes,

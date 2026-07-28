@@ -55,6 +55,18 @@ export function cell(value, format) {
   return cd;
 }
 
+/**
+ * Igual que cell() pero SIEMPRE trata el valor como texto plano.
+ * Se usa para las notas (freeform): evita que una nota que empiece con "="
+ * o "+" se interprete como fórmula.
+ */
+export function cellTexto(value, format) {
+  return {
+    userEnteredFormat: format || {},
+    userEnteredValue: { stringValue: value == null ? "" : String(value) },
+  };
+}
+
 /** Formato de celda con bg, color de texto, bold, alineación, etc. */
 export function fmt(opts = {}) {
   const f = {};
@@ -68,6 +80,7 @@ export function fmt(opts = {}) {
   }
   if (opts.halign) f.horizontalAlignment = opts.halign;
   if (opts.valign) f.verticalAlignment = opts.valign;
+  if (opts.wrap) f.wrapStrategy = opts.wrap; // "WRAP" | "CLIP" | "OVERFLOW_CELL"
   if (opts.numberFormat) {
     f.numberFormat = { type: opts.numberFormatType || "NUMBER", pattern: opts.numberFormat };
   }
