@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-const ROLES_VALIDOS = ["ADMIN", "USER", "VIEWER", "CORPO", "TIENDAS"];
+const ROLES_VALIDOS = ["ADMIN", "USER", "VIEWER", "CORPO", "TIENDAS", "CONTABILIDAD"];
 
 export async function POST(req) {
   try {

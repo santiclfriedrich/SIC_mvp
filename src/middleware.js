@@ -54,6 +54,20 @@ export async function middleware(req) {
     }
   }
 
+  // Usuarios CONTABILIDAD sólo pueden acceder a /contabilidad/* y a sus APIs.
+  if (token.role === "CONTABILIDAD") {
+    const contabilidadAllowed =
+      pathname.startsWith("/contabilidad") ||
+      pathname.startsWith("/api/contabilidad") ||
+      pathname.startsWith("/api/auth");
+    if (!contabilidadAllowed) {
+      if (isApi) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      return NextResponse.redirect(new URL("/contabilidad", req.url));
+    }
+  }
+
   // Rutas /admin/* exigen rol ADMIN.
   if (pathname.startsWith("/admin") && token.role !== "ADMIN") {
     if (isApi) {
@@ -75,6 +89,16 @@ export async function middleware(req) {
   const isTiendasPath =
     pathname.startsWith("/tiendas") || pathname.startsWith("/api/tiendas");
   if (isTiendasPath && token.role !== "TIENDAS" && token.role !== "ADMIN") {
+    if (isApi) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    return NextResponse.redirect(new URL("/", req.url));
+  }
+
+  // Rutas /contabilidad/* y /api/contabilidad/* exigen rol CONTABILIDAD o ADMIN.
+  const isContabilidadPath =
+    pathname.startsWith("/contabilidad") || pathname.startsWith("/api/contabilidad");
+  if (isContabilidadPath && token.role !== "CONTABILIDAD" && token.role !== "ADMIN") {
     if (isApi) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

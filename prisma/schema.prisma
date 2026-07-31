@@ -20,6 +20,7 @@ model User {
   accounts   Account[]
   sessions   Session[]
   reportesCc ReporteCC[]
+  conciliaciones ConciliacionMP[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -38,6 +39,30 @@ model ReporteCC {
   clientesJson  Json
   porVendedorJson Json
   createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// Una corrida de conciliación GBP ↔ MercadoPago. Guarda el Sheet generado
+/// y los contadores del cruce para el historial. El detalle completo (buckets)
+/// vive en el Google Sheet; acá guardamos un resumen liviano para la lista.
+model ConciliacionMP {
+  id             String   @id @default(cuid())
+  userId         String
+  fuente         String
+  spreadsheetId  String
+  spreadsheetUrl String
+  gbpOps         Int      // ops de GBP consideradas (con Nro_Operacion_Limpio)
+  cobradas       Int      // ops de GBP encontradas en MP
+  pendientes     Int      // ops de GBP sin cobro en MP
+  sobrantes      Int      // cobros de MP sin correlato en GBP
+  montoCobrado   Decimal  @db.Decimal(16, 2) @default(0)
+  montoPendiente Decimal  @db.Decimal(16, 2) @default(0)
+  montoSobrante  Decimal  @db.Decimal(16, 2) @default(0)
+  resumenJson    Json
+  createdAt      DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -86,6 +111,7 @@ enum Role {
   VIEWER
   CORPO
   TIENDAS
+  CONTABILIDAD
 }
 
 /// Un SKU del módulo de pricing. Los campos base (stock, costo, peso) se
