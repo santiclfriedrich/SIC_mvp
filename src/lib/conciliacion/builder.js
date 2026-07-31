@@ -19,6 +19,19 @@ export const HOJA_COBRADAS = "Cobradas";
 export const HOJA_PENDIENTES = "Pendientes";
 export const HOJA_SOBRANTES = "MP sin GBP";
 
+/**
+ * Redimensiona la grilla de la hoja. Una hoja nueva viene con 1000 filas por
+ * defecto; si escribimos más (updateCells con range) la API rechaza el request.
+ */
+function resizeGridReq(sheetId, rowCount, columnCount) {
+  return {
+    updateSheetProperties: {
+      properties: { sheetId, gridProperties: { rowCount, columnCount } },
+      fields: "gridProperties.rowCount,gridProperties.columnCount",
+    },
+  };
+}
+
 const fechaGen = () =>
   new Date().toLocaleString("es-AR", {
     day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
@@ -82,6 +95,10 @@ export function buildTabla(sheetId, { titulo, subtitulo, columnas, filas }) {
 
   const totalRows = grid.length;
   const reqs = [];
+
+  // Agrandar la grilla ANTES de escribir (evita el "beyond the last requested row").
+  // +2 de colchón y mínimo 10 filas (para buckets vacíos, así el freeze de 4 filas es válido).
+  reqs.push(resizeGridReq(sheetId, Math.max(totalRows + 2, 10), nCols));
 
   reqs.push(updateCellsReq(sheetId, 0, 0, grid));
   reqs.push(mergeReq(sheetId, 0, 1, 0, nCols)); // título A1:..
