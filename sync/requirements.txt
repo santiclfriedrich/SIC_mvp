@@ -1,0 +1,6 @@
+flask
+zeep
+requests
+lxml
+openpyxl
+psycopg[binary]
