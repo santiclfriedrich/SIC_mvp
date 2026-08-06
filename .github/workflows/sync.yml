@@ -1,0 +1,29 @@
+name: Sincronizar GBP -> Supabase
+on:
+  workflow_dispatch: {}
+concurrency:
+  group: sync-gbp
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: sync
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: sync/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Sincronizar
+        run: python sync.py
+        env:
+          TZ: America/Argentina/Buenos_Aires
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GBP_USER: ${{ secrets.GBP_USER }}
+          GBP_PASSWORD: ${{ secrets.GBP_PASSWORD }}
+          SGL_CLIENT_SECRET: ${{ secrets.SGL_CLIENT_SECRET }}
