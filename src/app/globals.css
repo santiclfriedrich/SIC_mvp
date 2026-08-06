@@ -1,41 +1,144 @@
 @import "tailwindcss";
 
-:root {
-  --bg:             #F2F1EE;
-  --surface:        #FFFFFF;
-  --border:         #E3E1DC;
-  --border-strong:  #C8C5BE;
-  --text-primary:   #1A1917;
-  --text-secondary: #625F5A;
-  --text-muted:     #9B978F;
-  --brand-dark:     #0D1829;
-  --brand-blue:     #1D4ED8;
-  --accent:         #2563EB;
+/* Modo oscuro por clase .dark en <html> (toggle manual; por defecto sigue al SO). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-brand-50: #eef4ff;
+  --color-brand-100: #d9e6ff;
+  --color-brand-300: #9db1f5;
+  --color-brand-500: #2f6bff;
+  --color-brand-600: #1f52e0;
+  --color-brand-700: #1a44b8;
+
+  /* Grises cálidos "ink" para el modo oscuro (estilo Notion). */
+  --color-ink-950: #1b1a19;
+  --color-ink-900: #21201e;
+  --color-ink-800: #2b2a27;
+  --color-ink-700: #343230;
+  --color-ink-600: #413f3c;
+  --color-ink-500: #605d59;
+  --color-ink-400: #837f7a;
+  --color-ink-300: #9e9a95;
+  --color-ink-200: #d0cdc9;
+  --color-ink-100: #eae8e6;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--bg);
-  --color-foreground:  var(--text-primary);
-  --font-sans:  var(--font-work-sans);
-  --font-mono:  var(--font-geist-mono);
-  --font-display: var(--font-work-sans);
-}
-
-html {
-  scroll-behavior: smooth;
-  -webkit-text-size-adjust: 100%;
-}
+html, body { height: 100%; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+html.dark { color-scheme: dark; }
 
 body {
-  background: var(--bg);
-  color: var(--text-primary);
-  font-family: var(--font-work-sans, "Work Sans", system-ui, sans-serif);
+  margin: 0;
+  background-color: #f6f7f9;
+  color: #17181c;
+  font-family: var(--font-inter), system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+html.dark body { background-color: #1b1a19; color: #eae8e6; }
+
+/* Desplegables con chevron propia (reemplaza la nativa). */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  background-size: 15px 15px;
+  padding-right: 2.1rem;
+}
+html.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239e9a95' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+select::-ms-expand { display: none; }
+
+/* Tokens shadcn (para controles portados en Fase 3) + compat con vars viejas de Cotizarg. */
+:root {
+  --radius: 0.625rem;
+  --background: #f6f7f9;
+  --foreground: #17181c;
+  --card: #ffffff;
+  --card-foreground: #17181c;
+  --popover: #ffffff;
+  --popover-foreground: #17181c;
+  --primary: #1b1a19;
+  --primary-foreground: #fafafa;
+  --secondary: #f1f2f4;
+  --secondary-foreground: #17181c;
+  --muted: #f1f2f4;
+  --muted-foreground: #6b7076;
+  --accent: #eef1f4;
+  --accent-foreground: #17181c;
+  --destructive: #dc2626;
+  --border: #e5e7ea;
+  --input: #d9dce0;
+  --ring: #1f52e0;
+
+  /* compat con componentes viejos de Cotizarg */
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border-strong: #c8c5be;
+  --text-primary: #1a1917;
+  --text-secondary: #625f5a;
+  --text-muted: #9b978f;
+  --brand-dark: #0d1829;
+  --brand-blue: #1d4ed8;
+}
+
+html.dark {
+  --background: #1b1a19;
+  --foreground: #eae8e6;
+  --card: #21201e;
+  --card-foreground: #eae8e6;
+  --popover: #21201e;
+  --popover-foreground: #eae8e6;
+  --primary: #eae8e6;
+  --primary-foreground: #21201e;
+  --secondary: #2b2a27;
+  --secondary-foreground: #eae8e6;
+  --muted: #2b2a27;
+  --muted-foreground: #9e9a95;
+  --accent: #2b2a27;
+  --accent-foreground: #eae8e6;
+  --destructive: #f87171;
+  --border: #343230;
+  --input: #413f3c;
+  --ring: #2f6bff;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
 
 /* Scrollbar sutil */
-::-webkit-scrollbar        { width: 5px; height: 5px; }
-::-webkit-scrollbar-track  { background: transparent; }
-::-webkit-scrollbar-thumb  { background: var(--border-strong); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c8c5be; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #9b978f; }
+html.dark ::-webkit-scrollbar-thumb { background: #413f3c; }
