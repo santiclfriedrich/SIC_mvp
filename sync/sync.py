@@ -498,12 +498,19 @@ def run_sync():
             _progress(con, "Fichas faltantes",
                       f"{n_fichas} artículos sumados", 72)
 
-        # --- costos (solo artículos con stock; el masivo no lo soporta el WS) ---
-        with_stock = [r["item_id"] for r in con.execute(
-            "SELECT item_id FROM items WHERE disabled = 0 AND stock_total > 0")]
+        # --- costos: la fuente principal es el export masivo BI.Costos, que
+        #     cubre TODOS los artículos (con o sin stock). La lista de abajo es
+        #     solo el fallback artículo-por-artículo para cuando ese WS masivo
+        #     no responde; la ampliamos a toda la mercadería (no solo lo que
+        #     tiene stock) para que el costo quede cacheado igual y el detalle
+        #     de Artículos no dependa de una consulta en vivo al ERP. ---
+        _excl = ",".join(str(c) for c in config.EXCLUDED_CATEGORIES) or "0"
+        cost_items = [r["item_id"] for r in con.execute(
+            "SELECT item_id FROM items WHERE disabled = 0 "
+            f"AND (cat_id IS NULL OR cat_id NOT IN ({_excl}))")]
         _progress(con, "Costos",
-                  f"consultando costo de {len(with_stock)} artículos", 65)
-        n_costs, cotizacion = sync_costs(con, with_stock)
+                  f"preparando costos de {len(cost_items)} artículos", 65)
+        n_costs, cotizacion = sync_costs(con, cost_items)
 
         # --- stock de SGL (depósito TML tercerizado), para Diferencias ---
         try:
