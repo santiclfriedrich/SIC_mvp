@@ -3,7 +3,7 @@ import { PreciosClient } from "./PreciosClient";
 
 export default function PreciosPage() {
   return (
-    <main className="min-h-screen bg-[#F2F1EE]">
+    <main className="min-h-screen bg-slate-50 dark:bg-ink-950">
       <div className="relative overflow-hidden bg-gradient-to-br from-[#0F766E] to-[#14B8A6] text-white">
         <div className="absolute -right-10 -top-10 opacity-[0.08] pointer-events-none">
           <svg width="280" height="280" viewBox="0 0 24 24" fill="currentColor">

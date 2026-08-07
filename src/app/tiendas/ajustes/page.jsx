@@ -3,7 +3,7 @@ import { AjustesClient } from "./AjustesClient";
 
 export default function AjustesPage() {
   return (
-    <main className="min-h-screen bg-[#F2F1EE]">
+    <main className="min-h-screen bg-slate-50 dark:bg-ink-950">
       <div className="bg-gradient-to-br from-[#0F766E] to-[#14B8A6] text-white">
         <div className="max-w-5xl mx-auto px-8 py-7 flex items-center justify-between gap-4">
           <div>

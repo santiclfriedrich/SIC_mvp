@@ -21,7 +21,7 @@ export function AjustesClient() {
       });
   }, []);
 
-  if (!config) return <div className="text-sm text-[#9B978F] p-6">Cargando…</div>;
+  if (!config) return <div className="text-sm text-slate-500 dark:text-ink-400 p-6">Cargando…</div>;
 
   function setStore(key, patch) {
     setConfig((c) => ({
@@ -83,16 +83,16 @@ export function AjustesClient() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-[#595959]">
+      <p className="text-sm text-slate-600 dark:text-ink-300">
         Cambiá comisiones, comisión CSI y el coeficiente de 3 cuotas por tienda.
         Los porcentajes se ingresan en % (ej. 15 = 15%).
       </p>
 
       <div className="grid gap-4">
         {Object.values(config.stores).map((s) => (
-          <div key={s.key} className="bg-white rounded-xl border border-black/[0.06] p-5">
+          <div key={s.key} className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-[#1A1917]">{s.nombre}</h3>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-ink-100">{s.nombre}</h3>
               <div className="flex items-center gap-4 text-xs">
                 <label className="flex items-center gap-1.5">
                   Logística %
@@ -101,7 +101,7 @@ export function AjustesClient() {
                     step="0.01"
                     value={toPctInput(s.logistica)}
                     onChange={(e) => setStore(s.key, { logistica: fromPctInput(e.target.value) })}
-                    className="px-2 py-1 rounded-md border border-[#E3E1DC] bg-[#FAFAF9] w-16"
+                    className="px-2 py-1 rounded-md border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 w-16"
                   />
                 </label>
                 <label className="flex items-center gap-1.5 cursor-pointer">
@@ -119,7 +119,7 @@ export function AjustesClient() {
               {Object.entries(s.pagos).map(([pago, cfg]) => (
                 <div key={pago} className="flex gap-3 items-end">
                   <div>
-                    <label className="block text-[11px] text-[#625F5A] mb-1">
+                    <label className="block text-[11px] text-slate-600 dark:text-ink-300 mb-1">
                       {pago === "1pago" ? "1 pago" : "3 CSI"} · comisión %
                     </label>
                     <input
@@ -127,18 +127,18 @@ export function AjustesClient() {
                       step="0.01"
                       value={toPctInput(cfg.comision)}
                       onChange={(e) => setPago(s.key, pago, { comision: fromPctInput(e.target.value) })}
-                      className="px-2 py-1.5 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm w-24"
+                      className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 text-sm w-24"
                     />
                   </div>
                   {pago === "3csi" && (
                     <div>
-                      <label className="block text-[11px] text-[#625F5A] mb-1">comisión CSI %</label>
+                      <label className="block text-[11px] text-slate-600 dark:text-ink-300 mb-1">comisión CSI %</label>
                       <input
                         type="number"
                         step="0.01"
                         value={toPctInput(cfg.csi)}
                         onChange={(e) => setPago(s.key, pago, { csi: fromPctInput(e.target.value) })}
-                        className="px-2 py-1.5 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm w-24"
+                        className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 text-sm w-24"
                       />
                     </div>
                   )}
@@ -147,13 +147,13 @@ export function AjustesClient() {
 
               {s.coefCSI != null && (
                 <div>
-                  <label className="block text-[11px] text-[#625F5A] mb-1">coef. 3 CSI</label>
+                  <label className="block text-[11px] text-slate-600 dark:text-ink-300 mb-1">coef. 3 CSI</label>
                   <input
                     type="number"
                     step="0.00000001"
                     value={s.coefCSI ?? ""}
                     onChange={(e) => setStore(s.key, { coefCSI: Number(e.target.value) })}
-                    className="px-2 py-1.5 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm w-36"
+                    className="px-2 py-1.5 rounded-lg border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 text-sm w-36"
                   />
                 </div>
               )}
@@ -162,17 +162,17 @@ export function AjustesClient() {
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-black/[0.06] p-5">
-        <h3 className="text-base font-semibold text-[#1A1917] mb-2">Tablas de fee por peso</h3>
-        <p className="text-xs text-[#9B978F] mb-3">
+      <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-5">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-ink-100 mb-2">Tablas de fee por peso</h3>
+        <p className="text-xs text-slate-500 dark:text-ink-400 mb-3">
           Avanzado: JSON de tramos por tienda{" "}
-          <code className="text-[#595959]">{"{ desdeKg, hastaKg, feeConIVA, feeConIVA30mil? }"}</code>.
+          <code className="text-slate-600 dark:text-ink-300">{"{ desdeKg, hastaKg, feeConIVA, feeConIVA30mil? }"}</code>.
         </p>
         <textarea
           value={feeText}
           onChange={(e) => setFeeText(e.target.value)}
           spellCheck={false}
-          className="w-full h-72 font-mono text-xs px-3 py-2 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] outline-none focus:border-[#14B8A6]"
+          className="w-full h-72 font-mono text-xs px-3 py-2 rounded-lg border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 outline-none focus:border-[#14B8A6]"
         />
         {feeErr && <p className="text-xs text-red-600 mt-2">{feeErr}</p>}
       </div>

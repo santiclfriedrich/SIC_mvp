@@ -17,7 +17,7 @@ function formatPct(n) {
   return (n * 100).toFixed(2) + "%";
 }
 function rentaColor(n) {
-  if (n == null || !Number.isFinite(n)) return "text-[#9B978F]";
+  if (n == null || !Number.isFinite(n)) return "text-slate-500 dark:text-ink-400";
   if (n < 0.02) return "text-red-600";
   if (n < 0.04) return "text-amber-600";
   return "text-emerald-600";
@@ -151,13 +151,13 @@ export function PreciosClient() {
   }, [drafts, productos]);
 
   if (loading && !config) {
-    return <div className="text-sm text-[#9B978F] p-6">Cargando…</div>;
+    return <div className="text-sm text-slate-500 dark:text-ink-400 p-6">Cargando…</div>;
   }
 
   return (
     <div className="space-y-6">
       {loadError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-red-700 rounded-xl p-4 text-sm">
           No se pudieron cargar todos los datos: {loadError}
           <button onClick={cargarTodo} className="ml-3 underline font-medium">
             Reintentar
@@ -166,7 +166,7 @@ export function PreciosClient() {
       )}
 
       {syncWarn && (
-        <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm flex items-start justify-between gap-3">
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 text-amber-800 rounded-xl p-4 text-sm flex items-start justify-between gap-3">
           <span>⚠️ {syncWarn} (tu cambio sí se guardó en la web).</span>
           <button onClick={() => setSyncWarn(null)} className="text-amber-600 hover:text-amber-800 font-medium">✕</button>
         </div>
@@ -233,15 +233,15 @@ function Report21Card({ upload, onUploaded }) {
   }
 
   return (
-    <form onSubmit={subir} className="bg-white rounded-xl border border-black/[0.06] p-6">
+    <form onSubmit={subir} className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-6">
       <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <label className="block text-sm font-medium text-[#1A1917]">
+        <label className="block text-sm font-medium text-slate-900 dark:text-ink-100">
           Subir planilla (.xls / .xlsx) — lee la hoja <code>report21</code> y los
           precios de <code>AJUSTE formula cobramos-ganamo</code>
         </label>
         {upload && (
-          <span className="text-xs text-[#9B978F]">
-            Último: <strong className="text-[#595959]">{upload.fuente}</strong> ·{" "}
+          <span className="text-xs text-slate-500 dark:text-ink-400">
+            Último: <strong className="text-slate-600 dark:text-ink-300">{upload.fuente}</strong> ·{" "}
             {upload.filas} SKUs ·{" "}
             {new Date(upload.createdAt).toLocaleString("es-AR", {
               day: "2-digit",
@@ -257,7 +257,7 @@ function Report21Card({ upload, onUploaded }) {
           accept=".xls,.xlsx"
           onChange={(e) => setFile(e.target.files?.[0] || null)}
           disabled={busy}
-          className="text-sm text-[#1A1917] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#E5E7EB] file:text-[#1A1917] hover:file:bg-[#D1D5DB] file:cursor-pointer"
+          className="text-sm text-slate-900 dark:text-ink-100 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-200 dark:file:bg-ink-700 file:text-slate-900 dark:file:text-ink-100 hover:file:bg-slate-300 dark:hover:file:bg-ink-600 file:cursor-pointer"
         />
         <button
           type="submit"
@@ -329,25 +329,25 @@ function PlanillaVivaCard({ onSynced }) {
   if (!estado) return null;
 
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] p-4">
+    <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-4">
       <div className="flex items-center gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${estado.existe ? "bg-emerald-500" : "bg-[#CBD5E1]"}`} />
-          <span className="text-sm font-medium text-[#1A1917]">Planilla viva</span>
+          <span className={`w-2 h-2 rounded-full ${estado.existe ? "bg-emerald-500" : "bg-slate-300 dark:bg-ink-600"}`} />
+          <span className="text-sm font-medium text-slate-900 dark:text-ink-100">Planilla viva</span>
         </div>
 
         {estado.existe ? (
           <>
-            <span className="text-xs text-[#9B978F]">
+            <span className="text-xs text-slate-500 dark:text-ink-400">
               Activa · {estado.skus} SKUs. Tus cambios de precio / LP se escriben acá al instante.
             </span>
-            <a href={estado.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0F766E] hover:underline font-medium">
+            <a href={estado.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0F766E] dark:text-teal-300 hover:underline font-medium">
               Abrir planilla viva →
             </a>
             <button
               onClick={sincronizar}
               disabled={syncing}
-              className="px-3 py-1.5 rounded-lg border border-[#0F766E] text-[#0F766E] text-xs font-medium hover:bg-[#0F766E]/5 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg border border-[#0F766E] text-[#0F766E] dark:text-teal-300 text-xs font-medium hover:bg-[#0F766E]/5 disabled:opacity-50"
               title="Trae a la web los precios que editaste directamente en el Sheet"
             >
               {syncing ? "Sincronizando…" : "↓ Traer cambios del Sheet"}
@@ -355,7 +355,7 @@ function PlanillaVivaCard({ onSynced }) {
             <button
               onClick={crear}
               disabled={busy}
-              className="text-xs text-[#9B978F] hover:text-[#595959] underline disabled:opacity-50"
+              className="text-xs text-slate-500 dark:text-ink-400 hover:text-slate-600 dark:hover:text-ink-300 underline disabled:opacity-50"
               title="Crea una copia fresca desde el molde (la actual se manda a la papelera)"
             >
               {busy ? "Recreando…" : "Recrear"}
@@ -363,7 +363,7 @@ function PlanillaVivaCard({ onSynced }) {
           </>
         ) : (
           <>
-            <span className="text-xs text-[#9B978F]">
+            <span className="text-xs text-slate-500 dark:text-ink-400">
               {estado.tieneMolde
                 ? "Creá la planilla viva: una copia de tu planilla que se mantiene sincronizada con la web."
                 : "Subí la planilla primero (se usa como molde)."}
@@ -420,8 +420,8 @@ function AddSkuBar({ onDone }) {
   }
 
   return (
-    <form onSubmit={agregar} className="bg-white rounded-xl border border-black/[0.06] p-4">
-      <label className="block text-xs font-medium text-[#625F5A] mb-1">
+    <form onSubmit={agregar} className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-4">
+      <label className="block text-xs font-medium text-slate-600 dark:text-ink-300 mb-1">
         Agregar SKU(s) con precio automático 4–5%
       </label>
       <div className="flex items-start gap-3 flex-wrap">
@@ -430,7 +430,7 @@ function AddSkuBar({ onDone }) {
           onChange={(e) => { setTexto(e.target.value); setErr(null); setRes(null); }}
           placeholder="Pegá uno o varios SKUs (uno por línea, o separados por coma/espacio). Ej:&#10;MONKAN0034&#10;MICKAN0002&#10;VENKAN0004"
           rows={3}
-          className="flex-1 min-w-[260px] px-3 py-2 rounded-lg border border-[#E3E1DC] bg-[#FAFAF9] text-sm outline-none focus:border-[#14B8A6] font-mono"
+          className="flex-1 min-w-[260px] px-3 py-2 rounded-lg border border-slate-200 dark:border-ink-700 bg-slate-50 dark:bg-ink-800 text-sm outline-none focus:border-[#14B8A6] font-mono"
         />
         <div className="flex flex-col gap-1">
           <button
@@ -440,7 +440,7 @@ function AddSkuBar({ onDone }) {
           >
             {busy ? "Procesando…" : `Agregar ${skus.length || ""} y autopreciar`}
           </button>
-          <span className="text-[11px] text-[#9B978F] max-w-[180px]">
+          <span className="text-[11px] text-slate-500 dark:text-ink-400 max-w-[180px]">
             Trae los datos del report21 y pone precio en todas las tiendas con renta 4–5%.
           </span>
         </div>
@@ -483,18 +483,18 @@ function ExportsBar({ productos }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] p-4">
+    <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-4">
       <div className="flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium text-[#1A1917]">Exportar:</span>
+        <span className="text-sm font-medium text-slate-900 dark:text-ink-100">Exportar:</span>
         <a
           href="/api/tiendas/export?mode=pegar"
-          className={`px-4 py-2 rounded-lg border border-[#E3E1DC] text-sm font-medium text-[#1A1917] hover:bg-[#F8F9FA] ${vacio ? "pointer-events-none opacity-50" : ""}`}
+          className={`px-4 py-2 rounded-lg border border-slate-200 dark:border-ink-700 text-sm font-medium text-slate-900 dark:text-ink-100 hover:bg-slate-50 dark:hover:bg-ink-800 ${vacio ? "pointer-events-none opacity-50" : ""}`}
         >
           Excel &quot;para pegar&quot;
         </a>
         <a
           href="/api/tiendas/export?mode=full"
-          className={`px-4 py-2 rounded-lg border border-[#E3E1DC] text-sm font-medium text-[#1A1917] hover:bg-[#F8F9FA] ${vacio ? "pointer-events-none opacity-50" : ""}`}
+          className={`px-4 py-2 rounded-lg border border-slate-200 dark:border-ink-700 text-sm font-medium text-slate-900 dark:text-ink-100 hover:bg-slate-50 dark:hover:bg-ink-800 ${vacio ? "pointer-events-none opacity-50" : ""}`}
         >
           Excel desglose
         </a>
@@ -507,7 +507,7 @@ function ExportsBar({ productos }) {
           {sheetBusy ? "Generando copia de la planilla…" : "A Google Sheets (planilla original)"}
         </button>
         {sheet && (
-          <a href={sheet.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0F766E] hover:underline font-medium">
+          <a href={sheet.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0F766E] dark:text-teal-300 hover:underline font-medium">
             Abrir Sheet →
           </a>
         )}
@@ -585,7 +585,7 @@ function PriceCell({ producto, storeCfg, pago, config, onSave }) {
             type="button"
             onClick={auto}
             title="Precio automático 4–5%"
-            className="text-[11px] text-[#0F766E] hover:text-[#0d655e] px-0.5"
+            className="text-[11px] text-[#0F766E] dark:text-teal-300 hover:text-[#0d655e] px-0.5"
           >
             ⚡
           </button>
@@ -598,16 +598,16 @@ function PriceCell({ producto, storeCfg, pago, config, onSave }) {
             placeholder="—"
             disabled={saving}
             title={eff.derivado ? "Derivado del 1 pago (editalo para fijarlo independiente)" : undefined}
-            className={`w-24 text-right px-2 py-1 rounded-md border text-sm outline-none focus:border-[#14B8A6] disabled:opacity-50 ${eff.derivado ? "border-dashed border-[#CBD5E1] bg-[#F8FAFC] text-[#64748B] italic" : "border-[#E3E1DC] bg-white"}`}
+            className={`w-24 text-right px-2 py-1 rounded-md border text-sm outline-none focus:border-[#14B8A6] disabled:opacity-50 ${eff.derivado ? "border-dashed border-slate-300 dark:border-ink-600 bg-slate-50 dark:bg-ink-800 text-slate-500 dark:text-ink-400 italic" : "border-slate-200 dark:border-ink-700 bg-white dark:bg-ink-900"}`}
           />
         </div>
         {renta != null ? (
           <div className="text-[11px] text-right">
             <span className={`font-semibold ${rentaColor(renta)}`}>{formatPct(renta)}</span>
-            {pago === "3csi" && eff.derivado && <span className="text-[#9B978F]"> · deriv.</span>}
+            {pago === "3csi" && eff.derivado && <span className="text-slate-500 dark:text-ink-400"> · deriv.</span>}
           </div>
         ) : (
-          <div className="text-[11px] text-[#C8C5BE]">—</div>
+          <div className="text-[11px] text-slate-400 dark:text-ink-500">—</div>
         )}
       </div>
     </td>
@@ -626,7 +626,7 @@ function PreciosTable({ filas, stores, config, onSave, onToggleLP, onDelete }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+    <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 overflow-hidden">
       <div className="px-5 py-3 bg-gradient-to-r from-[#0F766E] to-[#14B8A6] text-white flex items-center gap-2 flex-wrap">
         <h3 className="font-semibold">Precios actuales</h3>
         <span className="text-xs text-white/70">({filas.length})</span>
@@ -636,15 +636,15 @@ function PreciosTable({ filas, stores, config, onSave, onToggleLP, onDelete }) {
       </div>
 
       {filas.length === 0 ? (
-        <div className="p-6 text-sm text-[#9B978F]">
+        <div className="p-6 text-sm text-slate-500 dark:text-ink-400">
           Todavía no hay precios. Subí la planilla o agregá un SKU arriba.
         </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-[#F8F9FA] text-[#595959]">
+            <thead className="bg-slate-50 dark:bg-ink-800 text-slate-600 dark:text-ink-300">
               <tr>
-                <th className="text-left px-3 py-2 font-medium sticky left-0 bg-[#F8F9FA]">SKU</th>
+                <th className="text-left px-3 py-2 font-medium sticky left-0 bg-slate-50 dark:bg-ink-800">SKU</th>
                 {cols.map((c) => (
                   <th key={c.key} className="text-right px-3 py-2 font-medium whitespace-nowrap">
                     {c.label}
@@ -655,20 +655,20 @@ function PreciosTable({ filas, stores, config, onSave, onToggleLP, onDelete }) {
             </thead>
             <tbody>
               {filas.map((p, i) => (
-                <tr key={p.sku} className={i % 2 ? "bg-[#F8F9FA]" : "bg-white"}>
-                  <td className={`px-3 py-2 font-medium text-[#1A1917] whitespace-nowrap align-top sticky left-0 ${i % 2 ? "bg-[#F8F9FA]" : "bg-white"}`}>
+                <tr key={p.sku} className={i % 2 ? "bg-slate-50 dark:bg-ink-800" : "bg-white dark:bg-ink-900"}>
+                  <td className={`px-3 py-2 font-medium text-slate-900 dark:text-ink-100 whitespace-nowrap align-top sticky left-0 ${i % 2 ? "bg-slate-50 dark:bg-ink-800" : "bg-white dark:bg-ink-900"}`}>
                     <div className="flex items-center gap-1.5">
                       {p.sku}
                       <button
                         onClick={() => onToggleLP(p.sku, !p.esLP)}
                         title={p.esLP ? "Es LP (clic para sacar)" : "No es LP (clic para marcar)"}
-                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.esLP ? "bg-[#0F766E] text-white" : "bg-[#E5E7EB] text-[#9B978F]"}`}
+                        className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${p.esLP ? "bg-[#0F766E] text-white" : "bg-slate-200 dark:bg-ink-700 text-slate-500 dark:text-ink-400"}`}
                       >
                         LP
                       </button>
                       {p._draft && <span className="text-[10px] text-amber-600 font-bold">nuevo</span>}
                     </div>
-                    <div className="text-[10px] text-[#9B978F] max-w-[180px] truncate font-normal" title={p.descripcion}>
+                    <div className="text-[10px] text-slate-500 dark:text-ink-400 max-w-[180px] truncate font-normal" title={p.descripcion}>
                       {p.descripcion}
                     </div>
                   </td>
