@@ -4,6 +4,7 @@ import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from
 
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DIAS = ["lu", "ma", "mi", "ju", "vi", "sá", "do"];
+const GRID7 = { display: "grid", gridTemplateColumns: "repeat(7, 2rem)", gap: "2px" };
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fromISO = (s) => new Date(`${s}T00:00:00`);
@@ -16,9 +17,8 @@ const sameDay = (a, b) => a && b && a.getFullYear() === b.getFullYear() && a.get
 function monthCells(year, month) {
   const first = new Date(year, month, 1);
   const startWd = (first.getDay() + 6) % 7; // lunes = 0
-  const start = new Date(year, month, 1 - startWd);
   const cells = [];
-  const cur = new Date(start);
+  const cur = new Date(year, month, 1 - startWd);
   for (let i = 0; i < 42; i++) { cells.push(new Date(cur)); cur.setDate(cur.getDate() + 1); }
   return cells;
 }
@@ -34,11 +34,11 @@ function MonthGrid({ year, month, from, to, hover, onPick, onHover }) {
   };
   return (
     <div className="select-none">
-      <div className="mb-2 text-center text-sm font-semibold capitalize text-slate-800 dark:text-ink-100">{MESES[month]} {year}</div>
-      <div className="grid grid-cols-7 text-center text-[11px] text-slate-400 dark:text-ink-500">
+      <div className="mb-2 h-10 text-center text-sm font-semibold capitalize leading-tight text-slate-800 dark:text-ink-100">{MESES[month]}<br />{year}</div>
+      <div style={GRID7} className="text-center text-[11px] text-slate-400 dark:text-ink-500">
         {DIAS.map((d) => (<div key={d} className="py-1">{d}</div>))}
       </div>
-      <div className="grid grid-cols-7 gap-0.5">
+      <div style={GRID7}>
         {monthCells(year, month).map((d, i) => {
           const other = d.getMonth() !== month;
           const sel = sameDay(d, from) || sameDay(d, to);
@@ -50,7 +50,7 @@ function MonthGrid({ year, month, from, to, hover, onPick, onHover }) {
               onClick={() => onPick(d)}
               onMouseEnter={() => onHover(d)}
               className={[
-                "h-8 w-8 rounded-md text-sm tabular-nums transition-colors",
+                "flex h-8 w-8 items-center justify-center rounded-md text-sm tabular-nums transition-colors",
                 other ? "text-slate-300 dark:text-ink-600" : "text-slate-700 dark:text-ink-200",
                 sel
                   ? "bg-brand-600 font-semibold text-white dark:bg-brand-600 dark:text-white"
@@ -68,9 +68,8 @@ function MonthGrid({ year, month, from, to, hover, onPick, onHover }) {
   );
 }
 
-/** Selector de rango de fechas: presets + calendario de 2 meses en un popover,
- *  con Cancelar/Aplicar. `anchor` (yyyy-MM-dd) es el "hoy" del panel (último
- *  día con ventas), para que los presets se calculen sobre datos reales. */
+/** Selector de rango: presets + calendario de 2 meses en un popover. `anchor`
+ *  (yyyy-MM-dd) es el "hoy" del panel (último día con ventas). */
 export function DateRangePicker({ value, onChange, anchor }) {
   const hoy = anchor ? fromISO(anchor) : new Date();
   const [open, setOpen] = useState(false);
@@ -139,7 +138,7 @@ export function DateRangePicker({ value, onChange, anchor }) {
               ))}
             </div>
             <div className="p-3">
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-1 flex items-center justify-between">
                 <button type="button" onClick={() => setView(addMonths(view, -1))} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-ink-400 dark:hover:bg-ink-800" aria-label="Mes anterior"><ChevronLeft size={16} /></button>
                 <button type="button" onClick={() => setView(addMonths(view, 1))} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-ink-400 dark:hover:bg-ink-800" aria-label="Mes siguiente"><ChevronRight size={16} /></button>
               </div>
