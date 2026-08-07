@@ -9,8 +9,6 @@ async function setMeta(key, value) {
   );
 }
 
-// Dispara el workflow de sync en GitHub Actions (repo de Cotizarg). El trabajo
-// pesado corre allá; acá solo se lanza y se marca 'running'.
 export async function POST() {
   const token = process.env.GITHUB_TOKEN;
   const repo = process.env.GITHUB_REPO;
@@ -23,27 +21,29 @@ export async function POST() {
       { status: 503 }
     );
   }
+  const url = `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/dispatches`;
   try {
-    const r = await fetch(
-      `https://api.github.com/repos/${repo}/actions/workflows/${workflow}/dispatches`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.github+json",
-          "X-GitHub-Api-Version": "2022-11-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ref: branch }),
-      }
-    );
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json",
+        "User-Agent": "cotizarg-panel",
+      },
+      body: JSON.stringify({ ref: branch }),
+    });
     if (r.status === 204) {
       await setMeta("sync", { state: "running", step: "En cola", detail: "lanzada en la nube, arranca en ~1 min", pct: 1, at: "" });
       return Response.json({ started: true, via: "github-actions" });
     }
     const txt = await r.text().catch(() => "");
-    return Response.json({ started: false, reason: `GitHub respondió ${r.status}`, detail: txt.slice(0, 300) }, { status: 502 });
+    // Log visible en la terminal de `next dev`:
+    console.error(`[panel/sync] GitHub ${r.status} en ${url} -> ${txt}`);
+    return Response.json({ started: false, reason: `GitHub respondió ${r.status}`, detail: txt.slice(0, 400) }, { status: 502 });
   } catch (e) {
+    console.error("[panel/sync] error de red:", e);
     return Response.json({ started: false, reason: String(e?.message || e) }, { status: 500 });
   }
 }
