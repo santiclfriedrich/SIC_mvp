@@ -1,30 +1,23 @@
 export const ProductSkeleton = () => (
-  <div className="bg-white rounded-xl border border-[#E3E1DC] overflow-hidden animate-pulse"
-       style={{ borderLeftWidth: "3px", borderLeftColor: "#E3E1DC" }}>
-    {/* Image area */}
-    <div className="h-44 bg-[#F2F1EE]" />
+  <div className="animate-pulse overflow-hidden rounded-xl border border-l-4 border-slate-200 border-l-slate-200 bg-white dark:border-ink-700 dark:border-l-ink-700 dark:bg-ink-900">
+    <div className="h-44 bg-slate-100 dark:bg-ink-800" />
 
-    {/* Content */}
-    <div className="p-3.5 space-y-3">
-      {/* Name */}
+    <div className="space-y-3 p-3.5">
       <div className="space-y-1.5">
-        <div className="h-3 bg-[#E8E6E0] rounded w-full" />
-        <div className="h-3 bg-[#E8E6E0] rounded w-3/4" />
+        <div className="h-3 w-full rounded bg-slate-200 dark:bg-ink-800" />
+        <div className="h-3 w-3/4 rounded bg-slate-200 dark:bg-ink-800" />
       </div>
 
-      {/* SKU */}
-      <div className="h-2.5 bg-[#EEECe8] rounded w-1/3" />
+      <div className="h-2.5 w-1/3 rounded bg-slate-100 dark:bg-ink-700" />
 
-      {/* Price */}
       <div>
-        <div className="h-6 bg-[#E3E1DC] rounded w-1/2 mb-1" />
-        <div className="h-2.5 bg-[#EEECe8] rounded w-1/4" />
+        <div className="mb-1 h-6 w-1/2 rounded bg-slate-200 dark:bg-ink-800" />
+        <div className="h-2.5 w-1/4 rounded bg-slate-100 dark:bg-ink-700" />
       </div>
 
-      {/* Footer */}
-      <div className="flex justify-between pt-2.5 border-t border-[#F0EEEA]">
-        <div className="h-5 bg-[#EEECe8] rounded-full w-20" />
-        <div className="h-5 bg-[#EEECe8] rounded w-14" />
+      <div className="flex justify-between border-t border-slate-100 pt-2.5 dark:border-ink-800">
+        <div className="h-5 w-20 rounded-full bg-slate-100 dark:bg-ink-700" />
+        <div className="h-5 w-14 rounded bg-slate-100 dark:bg-ink-700" />
       </div>
     </div>
   </div>

@@ -43,7 +43,6 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Which products are "active" depends on the current view
   const showSearchResults = hasSearched || loading;
   const showBrowseAll = !showSearchResults && (loadingAll || allProducts.length > 0);
   const showInitialLanding = !showSearchResults && !showBrowseAll;
@@ -63,13 +62,12 @@ function App() {
     [sortedProducts, safePage]
   );
 
-  // ── Shared product bar (sort + count) ────────────────────────────────────
   const ProductBar = () => {
     if (loading || (loadingAll && !showSearchResults)) {
       return (
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-sm text-[#9B978F] flex items-center gap-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#2563EB] animate-ping inline-block" />
+        <div className="mb-5 flex items-center justify-between">
+          <p className="flex items-center gap-2 text-sm text-slate-500 dark:text-ink-400">
+            <span className="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-brand-500" />
             {showSearchResults
               ? "Buscando en todos los proveedores…"
               : "Cargando catálogo completo…"}
@@ -81,17 +79,17 @@ function App() {
     if (sortedProducts.length === 0 && !error) return null;
 
     return (
-      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <p className="text-sm text-[#9B978F]">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-slate-500 dark:text-ink-400">
           {showSearchResults ? (
             <>
-              <span className="font-semibold text-[#1A1917]">{sortedProducts.length}</span>{" "}
+              <span className="font-semibold text-slate-900 dark:text-ink-100">{sortedProducts.length}</span>{" "}
               {sortedProducts.length === 1 ? "resultado" : "resultados"} para{" "}
-              <span className="font-medium text-[#1A1917]">"{lastQuery}"</span>
+              <span className="font-medium text-slate-900 dark:text-ink-100">"{lastQuery}"</span>
             </>
           ) : (
             <>
-              <span className="font-semibold text-[#1A1917]">{sortedProducts.length}</span>{" "}
+              <span className="font-semibold text-slate-900 dark:text-ink-100">{sortedProducts.length}</span>{" "}
               {sortedProducts.length === 1 ? "producto" : "productos"} en el catálogo
             </>
           )}
@@ -102,11 +100,10 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F2F1EE]">
+    <div className="flex min-h-full flex-col">
       <main className="flex-1 px-4 py-6 sm:py-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="mx-auto max-w-7xl">
 
-          {/* ── Estado inicial: landing full-height ── */}
           {showInitialLanding && (
             <LandingPage
               searchQuery={query}
@@ -115,7 +112,6 @@ function App() {
             />
           )}
 
-          {/* ── Catálogo completo (auto-carga al login) ── */}
           {showBrowseAll && (
             <>
               <LandingPage
@@ -145,12 +141,10 @@ function App() {
             </>
           )}
 
-          {/* ── Resultados de búsqueda ── */}
           {showSearchResults && (
             <>
-              {/* Barra de búsqueda compacta */}
               <div className="mb-6">
-                <div className="max-w-xl mx-auto mb-3">
+                <div className="mx-auto mb-3 max-w-xl">
                   <SearchBar
                     searchQuery={query}
                     setSearchQuery={setQuery}
@@ -162,27 +156,24 @@ function App() {
 
               <ProductBar />
 
-              {/* Error */}
               {!loading && hasSearched && error && (
-                <p className="text-sm text-red-600 text-center mt-4">
+                <p className="mt-4 text-center text-sm text-red-600 dark:text-red-400">
                   Error al buscar. Por favor reintentá.
                 </p>
               )}
 
-              {/* Sin resultados */}
               {!loading && hasSearched && sortedProducts.length === 0 && !error && (
-                <div className="text-center py-20">
-                  <p className="text-4xl mb-4 select-none">🔍</p>
-                  <p className="text-base font-semibold text-[#1A1917] mb-1">
+                <div className="py-20 text-center">
+                  <p className="mb-4 select-none text-4xl">🔍</p>
+                  <p className="mb-1 text-base font-semibold text-slate-900 dark:text-ink-100">
                     Sin resultados para "{lastQuery}"
                   </p>
-                  <p className="text-sm text-[#9B978F]">
+                  <p className="text-sm text-slate-500 dark:text-ink-400">
                     Probá con otro código de producto o nombre.
                   </p>
                 </div>
               )}
 
-              {/* Grid */}
               {paginatedProducts.length > 0 && (
                 <>
                   <ProductGrid

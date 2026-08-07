@@ -1,5 +1,5 @@
 "use client";
-import { SearchBar } from '../SearchBar/SearchBar';
+import { SearchBar } from "../SearchBar/SearchBar";
 
 const PROVIDERS = [
   "Elit", "Nucleo", "PCArts", "Masnet", "Corcisa",
@@ -11,27 +11,21 @@ export const LandingPage = ({ searchQuery, setSearchQuery, onSearch, compact = f
     <div
       className={
         compact
-          ? "w-full max-w-4xl mx-auto px-4 pt-10 pb-8 text-center"
-          : "flex items-center justify-center min-h-[calc(100vh-3.5rem)]"
+          ? "mx-auto w-full max-w-4xl px-4 pb-8 pt-10 text-center"
+          : "flex min-h-[70vh] items-center justify-center"
       }
     >
-      <div className={compact ? "" : "w-full max-w-4xl mx-auto px-4 py-16 sm:py-20 text-center"}>
-
-        {/* Headline */}
-        <h1
-          className="text-2xl sm:text-3xl text-[#1A1917] mb-5 leading-snug font-extrabold tracking-wide"
-          style={{ fontFamily: "var(--font-display, sans-serif)" }}
-        >
+      <div className={compact ? "" : "mx-auto w-full max-w-4xl px-4 py-16 text-center sm:py-20"}>
+        <h1 className="mb-5 text-2xl font-extrabold leading-snug tracking-wide text-slate-900 dark:text-ink-100 sm:text-3xl">
           Buscá y compará todos los proveedores.
         </h1>
 
         {!compact && (
-          <p className="text-base sm:text-lg text-[#625F5A] mb-10 max-w-md mx-auto leading-relaxed">
+          <p className="mx-auto mb-10 max-w-md text-base leading-relaxed text-slate-600 dark:text-ink-300 sm:text-lg">
             Precios, stock y condiciones en tiempo real para tomar la mejor decisión de compra.
           </p>
         )}
 
-        {/* SearchBar */}
         <div className={compact ? "mb-0" : "mb-10"}>
           <SearchBar
             searchQuery={searchQuery}
@@ -41,13 +35,12 @@ export const LandingPage = ({ searchQuery, setSearchQuery, onSearch, compact = f
           />
         </div>
 
-        {/* Providers pills — only in full mode */}
         {!compact && (
           <div className="flex flex-wrap justify-center gap-1.5">
             {PROVIDERS.map((p) => (
               <span
                 key={p}
-                className="px-3 py-1 rounded-full text-[11px] font-medium bg-white border border-[#E3E1DC] text-[#9B978F] shadow-sm select-none"
+                className="select-none rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:border-ink-700 dark:bg-ink-900 dark:text-ink-400"
               >
                 {p}
               </span>

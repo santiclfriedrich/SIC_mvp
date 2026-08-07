@@ -64,56 +64,56 @@ export const ProductModal = ({ product, onClose }) => {
 
   const stockBadge = (stock) =>
     stock > 20
-      ? "bg-emerald-50 text-emerald-700"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
       : stock > 0
-      ? "bg-amber-50 text-amber-700"
-      : "bg-red-50 text-red-600";
+      ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+      : "bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300";
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-[#F2F1EE] w-full sm:max-w-5xl sm:w-full max-h-[96vh] sm:max-h-[90vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl shadow-2xl"
+        className="max-h-[96vh] w-full overflow-y-auto rounded-t-2xl bg-slate-50 shadow-2xl dark:bg-ink-950 sm:max-h-[90vh] sm:w-full sm:max-w-5xl sm:rounded-2xl"
         onClick={(e) => e.stopPropagation()}
       >
 
         {/* HEADER STICKY */}
-        <div className="flex items-center justify-between px-5 py-3.5 bg-[#F2F1EE] border-b border-[#E3E1DC] sticky top-0 z-10">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50 px-5 py-3.5 dark:border-ink-700 dark:bg-ink-950">
+          <div className="flex min-w-0 items-center gap-2">
             <span
-              className={`px-3 py-0.5 rounded-full text-xs font-semibold flex-shrink-0 ${bestStyle.badge}`}
+              className={`flex-shrink-0 rounded-full px-3 py-0.5 text-xs font-semibold ${bestStyle.badge}`}
               style={bestStyle.badgeBg ? { backgroundColor: bestStyle.badgeBg } : undefined}
             >
               {best.provider}
             </span>
             {providers.length > 1 && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/60 flex items-center gap-1 flex-shrink-0">
+              <span className="flex flex-shrink-0 items-center gap-1 rounded-full border border-emerald-200/60 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300">
                 <Trophy size={11} />
                 Mejor precio
               </span>
             )}
-            <span className="text-sm font-medium text-[#625F5A] truncate hidden sm:block ml-1">
+            <span className="ml-1 hidden truncate text-sm font-medium text-slate-600 dark:text-ink-300 sm:block">
               {product.name}
             </span>
           </div>
 
           <button
             onClick={onClose}
-            className="ml-3 flex-shrink-0 p-1.5 hover:bg-[#E3E1DC] rounded-lg transition-colors text-[#625F5A] hover:text-[#1A1917]"
+            className="ml-3 flex-shrink-0 rounded-lg p-1.5 text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-100"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* CUERPO PRINCIPAL */}
-        <div className="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
 
           {/* Imagen */}
-          <div className="bg-white rounded-xl border border-[#E3E1DC] p-5 flex items-center justify-center min-h-[240px]"
-               style={{ backgroundColor: best.provider === "SolutionBox" ? "#2b2d32" : "#fff" }}>
-            <div className="relative w-full h-64 md:h-80">
+          <div className="flex min-h-[240px] items-center justify-center rounded-xl border border-slate-200 bg-white p-5 dark:border-ink-700 dark:bg-ink-900"
+               style={{ backgroundColor: best.provider === "SolutionBox" ? "#2b2d32" : undefined }}>
+            <div className="relative h-64 w-full md:h-80">
               <SmartImage
                 src={imageUrl}
                 alt={product.name}
@@ -128,71 +128,65 @@ export const ProductModal = ({ product, onClose }) => {
           {/* Detalles */}
           <div className="flex flex-col gap-4">
 
-            {/* Nombre */}
             <div>
-              <h2
-                className="text-2xl sm:text-3xl font-bold text-[#1A1917] leading-tight mb-2 tracking-tight"
-              >
+              <h2 className="mb-2 text-2xl font-bold leading-tight tracking-tight text-slate-900 dark:text-ink-100 sm:text-3xl">
                 {product.name}
               </h2>
 
-              {/* SKU */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-[#9B978F]">SKU</span>
-                <span className="px-2.5 py-0.5 bg-white border border-[#E3E1DC] rounded-md font-mono text-sm text-[#1A1917]">
+                <span className="text-xs font-medium text-slate-400 dark:text-ink-400">SKU</span>
+                <span className="rounded-md border border-slate-200 bg-white px-2.5 py-0.5 font-mono text-sm text-slate-900 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100">
                   {product.sku}
                 </span>
                 <button
                   onClick={handleCopySku}
-                  className="p-1 hover:bg-[#E3E1DC] rounded-md transition-colors text-[#9B978F] hover:text-[#1A1917]"
+                  className="rounded-md p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100"
                 >
                   {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                 </button>
               </div>
             </div>
 
-            {/* Precio principal */}
             <div
-              className="bg-white rounded-xl border p-4"
+              className="rounded-xl border bg-white p-4 dark:bg-ink-900"
               style={{ borderColor: bestStyle.color + "40", borderLeftColor: bestStyle.color, borderLeftWidth: "3px" }}
             >
-              <p className="text-xs font-medium text-[#9B978F] flex items-center gap-1.5 mb-2">
+              <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-400 dark:text-ink-400">
                 <Trophy size={12} className="text-emerald-600" />
                 Mejor precio disponible
               </p>
 
-              <div className="flex items-baseline gap-1.5 mb-1">
-                <span className="text-sm font-medium text-[#9B978F]">USD</span>
-                <span className="text-3xl font-bold text-[#1A1917] tracking-tight">
+              <div className="mb-1 flex items-baseline gap-1.5">
+                <span className="text-sm font-medium text-slate-400 dark:text-ink-400">USD</span>
+                <span className="text-3xl font-bold tracking-tight text-slate-900 dark:text-ink-100">
                   {best.price.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </span>
               </div>
 
-              <p className="text-xs text-[#9B978F] mb-3">+ IVA {best.iva}</p>
+              <p className="mb-3 text-xs text-slate-400 dark:text-ink-400">+ IVA {best.iva}</p>
 
-              <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${stockBadge(best.stockTotal)}`}>
+              <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadge(best.stockTotal)}`}>
                 {best.stockTotal > 0 ? `${best.stockTotal} unidades disponibles` : "Sin stock"}
               </span>
             </div>
 
             {ahorro > 0 && (
-              <p className="text-sm text-[#625F5A] flex items-center gap-1.5">
+              <p className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-ink-300">
                 <TrendingDown size={14} className="text-emerald-600" />
                 Ahorrás{" "}
-                <span className="font-semibold text-[#1A1917]">
+                <span className="font-semibold text-slate-900 dark:text-ink-100">
                   USD {ahorro.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                 </span>{" "}
                 vs el más caro
               </p>
             )}
 
-            {/* CTA */}
             {best.link && (
               <a
                 href={best.link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#1D4ED8] hover:bg-[#1e40af] text-white text-sm font-medium transition-all duration-150 active:scale-[0.98]"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-sm font-medium text-white transition-all duration-150 hover:bg-brand-700 active:scale-[0.98]"
               >
                 Ir al mejor precio
                 <ExternalLink size={15} />
@@ -204,21 +198,20 @@ export const ProductModal = ({ product, onClose }) => {
         {/* TABLA COMPARATIVA */}
         {providers.length > 1 && (
           <div className="px-5 pb-5">
-            <h3 className="text-sm font-semibold text-[#1A1917] mb-3">
+            <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-ink-100">
               Comparación de precios{" "}
-              <span className="font-normal text-[#9B978F]">· {providers.length} proveedores</span>
+              <span className="font-normal text-slate-400 dark:text-ink-400">· {providers.length} proveedores</span>
             </h3>
 
-            {/* Scroll horizontal en mobile */}
-            <div className="overflow-x-auto rounded-xl border border-[#E3E1DC]">
-              <table className="w-full min-w-[520px] text-sm bg-white">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-ink-700">
+              <table className="w-full min-w-[520px] bg-white text-sm dark:bg-ink-900">
                 <thead>
-                  <tr className="border-b border-[#E3E1DC] bg-[#F8F7F5]">
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Proveedor</th>
-                    <th className="text-left px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">SKU</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Precio</th>
-                    <th className="text-right px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Stock</th>
-                    <th className="text-center px-4 py-2.5 text-xs font-semibold text-[#9B978F] uppercase tracking-wide">Link</th>
+                  <tr className="border-b border-slate-200 bg-slate-50 dark:border-ink-700 dark:bg-ink-800">
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-ink-400">Proveedor</th>
+                    <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-ink-400">SKU</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-ink-400">Precio</th>
+                    <th className="px-4 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-ink-400">Stock</th>
+                    <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-ink-400">Link</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,14 +221,14 @@ export const ProductModal = ({ product, onClose }) => {
                     return (
                       <tr
                         key={`${p.provider}-${i}`}
-                        className={`border-b border-[#F0EEEA] last:border-0 transition-colors ${
-                          isBest ? "bg-emerald-50/60" : "hover:bg-[#F8F7F5]"
+                        className={`border-b border-slate-100 transition-colors last:border-0 dark:border-ink-800 ${
+                          isBest ? "bg-emerald-50/60 dark:bg-emerald-950/30" : "hover:bg-slate-50 dark:hover:bg-ink-800"
                         }`}
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <span
-                              className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${ps.badge || "bg-gray-50 text-gray-600"}`}
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${ps.badge || "bg-gray-50 text-gray-600"}`}
                               style={ps.badgeBg ? { backgroundColor: ps.badgeBg } : undefined}
                             >
                               {p.provider}
@@ -243,15 +236,15 @@ export const ProductModal = ({ product, onClose }) => {
                             {isBest && <Trophy size={12} className="text-emerald-500" />}
                           </div>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs text-[#625F5A]">{product.sku}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-slate-600 dark:text-ink-300">{product.sku}</td>
                         <td className="px-4 py-3 text-right">
-                          <p className="font-semibold text-[#1A1917]">
+                          <p className="font-semibold text-slate-900 dark:text-ink-100">
                             USD {p.price.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
                           </p>
-                          <p className="text-[11px] text-[#9B978F]">+ IVA {p.iva}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-ink-400">+ IVA {p.iva}</p>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${stockBadge(p.stockTotal)}`}>
+                          <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${stockBadge(p.stockTotal)}`}>
                             {p.stockTotal} un.
                           </span>
                         </td>
@@ -261,12 +254,12 @@ export const ProductModal = ({ product, onClose }) => {
                               href={p.link}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-[#2563EB] hover:text-[#1D4ED8] transition-colors inline-flex"
+                              className="inline-flex text-brand-600 transition-colors hover:text-brand-700 dark:text-brand-300"
                             >
                               <ExternalLink size={16} />
                             </a>
                           ) : (
-                            <span className="text-[#C8C5BE]">—</span>
+                            <span className="text-slate-300 dark:text-ink-600">—</span>
                           )}
                         </td>
                       </tr>
@@ -279,10 +272,10 @@ export const ProductModal = ({ product, onClose }) => {
         )}
 
         {/* FOOTER */}
-        <div className="flex justify-end gap-3 px-5 py-4 border-t border-[#E3E1DC]">
+        <div className="flex justify-end gap-3 border-t border-slate-200 px-5 py-4 dark:border-ink-700">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-[#625F5A] hover:text-[#1A1917] hover:bg-[#E3E1DC] rounded-lg transition-colors"
+            className="rounded-lg px-4 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900 dark:text-ink-300 dark:hover:bg-ink-800 dark:hover:text-ink-100"
           >
             Cerrar
           </button>

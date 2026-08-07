@@ -10,7 +10,6 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Build visible page numbers with ellipsis
   const buildPages = () => {
     const delta = 2;
     const range = [];
@@ -38,17 +37,18 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
   const btnBase =
     "min-w-[2rem] h-8 px-2 rounded-lg text-[13px] font-medium transition-colors border";
-  const btnActive = "bg-[#2563EB] text-white border-[#2563EB]";
+  const btnActive = "bg-brand-600 text-white border-brand-600";
   const btnInactive =
-    "bg-white text-[#1A1917] border-[#E3E1DC] hover:border-[#C8C5BE]";
+    "bg-white text-slate-900 border-slate-200 hover:border-slate-300 dark:bg-ink-900 dark:text-ink-100 dark:border-ink-700 dark:hover:border-ink-600";
+  const arrowBtn =
+    "p-2 rounded-lg border border-slate-200 bg-white text-slate-900 transition-colors hover:border-slate-300 disabled:cursor-not-allowed disabled:opacity-35 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:hover:border-ink-600";
 
   return (
-    <div className="flex items-center justify-center gap-1 mt-8 mb-2 flex-wrap">
-      {/* Prev */}
+    <div className="mb-2 mt-8 flex flex-wrap items-center justify-center gap-1">
       <button
         onClick={() => handleChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-lg border border-[#E3E1DC] bg-white text-[#1A1917] disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#C8C5BE] transition-colors"
+        className={arrowBtn}
         aria-label="Página anterior"
       >
         <ChevronLeft size={15} />
@@ -56,7 +56,7 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
 
       {pages.map((page, i) =>
         page === "..." ? (
-          <span key={`dots-${i}`} className="px-1 text-sm text-[#9B978F] select-none">
+          <span key={`dots-${i}`} className="select-none px-1 text-sm text-slate-400 dark:text-ink-400">
             …
           </span>
         ) : (
@@ -70,11 +70,10 @@ export const Pagination = ({ currentPage, totalPages, onPageChange }) => {
         )
       )}
 
-      {/* Next */}
       <button
         onClick={() => handleChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-lg border border-[#E3E1DC] bg-white text-[#1A1917] disabled:opacity-35 disabled:cursor-not-allowed hover:border-[#C8C5BE] transition-colors"
+        className={arrowBtn}
         aria-label="Página siguiente"
       >
         <ChevronRight size={15} />
