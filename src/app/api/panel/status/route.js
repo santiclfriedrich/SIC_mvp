@@ -12,17 +12,17 @@ async function meta(key, def = null) {
 export async function GET() {
   try {
     let sync = await meta("sync", null);
-    // Corrida muerta: un 'running' sin progreso hace >15 min quedó interrumpido.
-    if (sync && sync.state === "running" && sync.at) {
-      const age = (Date.now() - new Date(sync.at).getTime()) / 1000;
-      if (Number.isFinite(age) && age > 900) {
-        sync = { ...sync, state: "error", detail: "quedó interrumpida; volvé a sincronizar" };
+    if (sync && sync.state === "running") {
+      const t = sync.at ? new Date(sync.at).getTime() : NaN;
+      const age = Number.isFinite(t) ? (Date.now() - t) / 1000 : Infinity;
+      if (!sync.at || age > 900) {
+        sync = { ...sync, state: "error", detail: "la corrida anterior no terminó; volvé a sincronizar" };
       }
     }
     const counts = {};
-    for (const t of ["items", "stock", "prices", "storages"]) {
-      const [row] = await prisma.$queryRawUnsafe(`SELECT COUNT(*) AS c FROM ${t}`);
-      counts[t] = Number(row.c);
+    for (const tbl of ["items", "stock", "prices", "storages"]) {
+      const [row] = await prisma.$queryRawUnsafe(`SELECT COUNT(*) AS c FROM ${tbl}`);
+      counts[tbl] = Number(row.c);
     }
     return Response.json(jsonSafe({
       sync,

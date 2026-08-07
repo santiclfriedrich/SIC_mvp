@@ -35,7 +35,7 @@ export async function POST() {
       body: JSON.stringify({ ref: branch }),
     });
     if (r.status === 204) {
-      await setMeta("sync", { state: "running", step: "En cola", detail: "lanzada en la nube, arranca en ~1 min", pct: 1, at: "" });
+      await setMeta("sync", { state: "running", step: "En cola", detail: "lanzada en la nube, arranca en ~1 min", pct: 1, at: new Date().toISOString() });
       return Response.json({ started: true, via: "github-actions" });
     }
     const txt = await r.text().catch(() => "");
