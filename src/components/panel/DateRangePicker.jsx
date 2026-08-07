@@ -5,6 +5,7 @@ import { Calendar as CalendarIcon, ChevronDown, ChevronLeft, ChevronRight } from
 const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
 const DIAS = ["lu", "ma", "mi", "ju", "vi", "sá", "do"];
 const GRID7 = { display: "grid", gridTemplateColumns: "repeat(7, 2rem)", gap: "2px" };
+const MONTH_W = "w-[236px]"; // 7×2rem + 6×2px de gap
 const pad = (n) => String(n).padStart(2, "0");
 const iso = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fromISO = (s) => new Date(`${s}T00:00:00`);
@@ -33,8 +34,7 @@ function MonthGrid({ year, month, from, to, hover, onPick, onHover }) {
     return x >= a && x <= b;
   };
   return (
-    <div className="select-none">
-      <div className="mb-2 h-10 text-center text-sm font-semibold capitalize leading-tight text-slate-800 dark:text-ink-100">{MESES[month]}<br />{year}</div>
+    <div className={`${MONTH_W} select-none`}>
       <div style={GRID7} className="text-center text-[11px] text-slate-400 dark:text-ink-500">
         {DIAS.map((d) => (<div key={d} className="py-1">{d}</div>))}
       </div>
@@ -118,6 +118,7 @@ export function DateRangePicker({ value, onChange, anchor }) {
     : "Elegí un rango";
 
   const next = addMonths(view, 1);
+  const arrowCls = "flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 dark:text-ink-400 dark:hover:bg-ink-800";
 
   return (
     <div className="relative" ref={ref}>
@@ -138,9 +139,12 @@ export function DateRangePicker({ value, onChange, anchor }) {
               ))}
             </div>
             <div className="p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <button type="button" onClick={() => setView(addMonths(view, -1))} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-ink-400 dark:hover:bg-ink-800" aria-label="Mes anterior"><ChevronLeft size={16} /></button>
-                <button type="button" onClick={() => setView(addMonths(view, 1))} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 dark:text-ink-400 dark:hover:bg-ink-800" aria-label="Mes siguiente"><ChevronRight size={16} /></button>
+              {/* Encabezado: flechas centradas verticalmente con los títulos de mes */}
+              <div className="relative mb-2 flex gap-6">
+                <div className={`${MONTH_W} text-center text-sm font-semibold capitalize text-slate-800 dark:text-ink-100`}>{MESES[view.getMonth()]} {view.getFullYear()}</div>
+                <div className={`hidden md:block ${MONTH_W} text-center text-sm font-semibold capitalize text-slate-800 dark:text-ink-100`}>{MESES[next.getMonth()]} {next.getFullYear()}</div>
+                <button type="button" onClick={() => setView(addMonths(view, -1))} className={`absolute left-0 top-1/2 -translate-y-1/2 ${arrowCls}`} aria-label="Mes anterior"><ChevronLeft size={16} /></button>
+                <button type="button" onClick={() => setView(addMonths(view, 1))} className={`absolute right-0 top-1/2 -translate-y-1/2 ${arrowCls}`} aria-label="Mes siguiente"><ChevronRight size={16} /></button>
               </div>
               <div className="flex gap-6" onMouseLeave={() => setHover(null)}>
                 <MonthGrid year={view.getFullYear()} month={view.getMonth()} from={from} to={to} hover={hover} onPick={pick} onHover={setHover} />
