@@ -18,10 +18,10 @@ export default async function ContabilidadHome() {
       : "—";
 
   return (
-    <main className="min-h-screen bg-[#F2F1EE] p-8">
+    <main className="p-6 sm:p-8">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-semibold text-[#1A1917] mb-2">Panel Contabilidad</h1>
-        <p className="text-sm text-[#9B978F] mb-8">
+        <h1 className="text-3xl font-semibold text-slate-900 dark:text-ink-100 mb-2">Panel Contabilidad</h1>
+        <p className="text-sm text-slate-500 dark:text-ink-400 mb-8">
           Herramientas de conciliación y control de cobros.
         </p>
 

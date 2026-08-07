@@ -83,8 +83,8 @@ export function ConciliacionClient() {
   return (
     <div className="space-y-6">
       {/* Upload form */}
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-black/[0.06] p-6">
-        <label className="block text-sm font-medium text-[#1A1917] mb-2">
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-6">
+        <label className="block text-sm font-medium text-slate-900 dark:text-ink-100 mb-2">
           Subir Excel de conciliación (.xls / .xlsx) — hojas: gbp, argcol, kanji, ganga
         </label>
         <div className="flex items-center gap-3 flex-wrap">
@@ -93,7 +93,7 @@ export function ConciliacionClient() {
             accept=".xls,.xlsx"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
             disabled={loading}
-            className="text-sm text-[#1A1917] file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#E5E7EB] file:text-[#1A1917] hover:file:bg-[#D1D5DB] file:cursor-pointer"
+            className="text-sm text-slate-900 dark:text-ink-100 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-200 dark:file:bg-ink-700 file:text-slate-900 dark:file:text-ink-100 hover:file:bg-slate-300 dark:hover:file:bg-ink-600 file:cursor-pointer"
           />
           <button
             type="submit"
@@ -103,19 +103,19 @@ export function ConciliacionClient() {
             {loading ? "Generando cruce…" : "Generar cruce"}
           </button>
         </div>
-        <p className="text-xs text-[#9B978F] mt-2">
+        <p className="text-xs text-slate-500 dark:text-ink-400 mt-2">
           El cruce puede demorar de 10 a 20 segundos en generarse.
         </p>
       </form>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
+        <div className="bg-red-50 border border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-900/50 dark:text-red-300 rounded-xl p-4 text-sm">
           {error}
         </div>
       )}
 
       {/* Historial */}
-      <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
+      <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 overflow-hidden">
         <div className="px-5 py-3 bg-gradient-to-r from-[#065F46] to-[#059669] text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -140,15 +140,15 @@ export function ConciliacionClient() {
           </button>
         </div>
         {loadingList && reportes.length === 0 ? (
-          <div className="p-6 text-sm text-[#9B978F]">Cargando…</div>
+          <div className="p-6 text-sm text-slate-500 dark:text-ink-400">Cargando…</div>
         ) : reportes.length === 0 ? (
-          <div className="p-6 text-sm text-[#9B978F]">
+          <div className="p-6 text-sm text-slate-500 dark:text-ink-400">
             Todavía no generaste ninguna conciliación. Subí un archivo para empezar.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-[#F8F9FA] text-[#595959]">
+              <thead className="bg-slate-50 dark:bg-ink-800 text-slate-600 dark:text-ink-300">
                 <tr>
                   <th className="text-left px-4 py-2 font-medium">Fecha</th>
                   <th className="text-left px-4 py-2 font-medium">Nombre del archivo</th>
@@ -161,8 +161,8 @@ export function ConciliacionClient() {
               </thead>
               <tbody>
                 {reportes.map((r, i) => (
-                  <tr key={r.id} className={i % 2 === 1 ? "bg-[#F8F9FA]" : "bg-white"}>
-                    <td className="px-4 py-2 text-[#595959] whitespace-nowrap">
+                  <tr key={r.id} className={i % 2 === 1 ? "bg-slate-50 dark:bg-ink-800" : "bg-white dark:bg-ink-900"}>
+                    <td className="px-4 py-2 text-slate-600 dark:text-ink-300 whitespace-nowrap">
                       {formatFecha(r.createdAt)}
                     </td>
                     <td className="px-4 py-2">
@@ -171,7 +171,7 @@ export function ConciliacionClient() {
                           href={r.spreadsheetUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#1A1917] hover:text-[#059669] hover:underline font-medium inline-flex items-center gap-1"
+                          className="text-slate-900 dark:text-ink-100 hover:text-[#059669] hover:underline font-medium inline-flex items-center gap-1"
                           title="Abrir en Drive"
                         >
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -182,10 +182,10 @@ export function ConciliacionClient() {
                           {r.nombreArchivo}
                         </a>
                       ) : (
-                        <span className="text-[#9B978F] italic">Archivo eliminado en Drive</span>
+                        <span className="text-slate-500 dark:text-ink-400 italic">Archivo eliminado en Drive</span>
                       )}
                     </td>
-                    <td className="px-4 py-2 text-[#595959]">{r.user?.name || r.user?.email}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-ink-300">{r.user?.name || r.user?.email}</td>
                     <td className="px-4 py-2 text-center font-medium text-[#059669]">{r.cobradas}</td>
                     <td className="px-4 py-2 text-center font-medium text-[#D97706]">{r.pendientes}</td>
                     <td className="px-4 py-2 text-center font-medium text-[#DC2626]">{r.sobrantes}</td>
@@ -228,20 +228,20 @@ export function ConciliacionClient() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-xl border border-black/[0.06] p-6 max-w-md w-full"
+            className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-6 max-w-md w-full"
           >
-            <h3 className="text-lg font-semibold text-[#1A1917] mb-2">¿Borrar esta conciliación?</h3>
-            <p className="text-sm text-[#595959] mb-1">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-ink-100 mb-2">¿Borrar esta conciliación?</h3>
+            <p className="text-sm text-slate-600 dark:text-ink-300 mb-1">
               <strong>{confirmDelete.nombreArchivo || confirmDelete.fuente}</strong>
             </p>
-            <p className="text-xs text-[#9B978F] mb-5">
+            <p className="text-xs text-slate-500 dark:text-ink-400 mb-5">
               Se envía el Sheet a la papelera del Shared Drive (recuperable 30 días) y se quita del historial.
             </p>
             <div className="flex items-center justify-end gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
                 disabled={deleting !== null}
-                className="px-4 py-2 rounded-lg text-sm font-medium text-[#595959] hover:bg-[#F8F9FA] disabled:opacity-50"
+                className="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-ink-300 hover:bg-slate-50 dark:hover:bg-ink-800 disabled:opacity-50"
               >
                 Cancelar
               </button>

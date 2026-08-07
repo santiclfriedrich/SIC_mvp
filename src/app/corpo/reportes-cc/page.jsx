@@ -3,7 +3,7 @@ import { ReportePreviewClient } from "./ReportePreviewClient";
 
 export default function ReportesCcPage() {
   return (
-    <main className="min-h-screen bg-[#F2F1EE]">
+    <main className="min-h-screen bg-slate-50 dark:bg-ink-950">
       {/* Hero gradiente */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#1F4E78] to-[#2E75B6] text-white">
         {/* Decoración */}

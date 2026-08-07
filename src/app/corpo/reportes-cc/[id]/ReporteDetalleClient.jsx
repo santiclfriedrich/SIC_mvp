@@ -39,18 +39,18 @@ export function ReporteDetalleClient({ data }) {
   return (
     // h-screen menos el alto del Header global (56px = h-14 + 1px de border)
     <main
-      className="flex flex-col bg-[#F2F1EE] overflow-hidden"
-      style={{ height: "calc(100vh - 57px)", overscrollBehavior: "contain" }}
+      className="flex h-full flex-col overflow-hidden bg-slate-50 dark:bg-ink-950"
+      style={{ overscrollBehavior: "contain" }}
     >
       {/* Header: título + tabs + botones, todo en una fila */}
-      <div className="bg-white border-b border-black/[0.06] flex-shrink-0">
+      <div className="bg-white dark:bg-ink-900 border-b border-slate-200 dark:border-ink-700 flex-shrink-0">
         <div className="px-6 flex items-end justify-between gap-6 flex-wrap">
           <div className="flex items-end gap-8 min-w-0 flex-wrap">
             <div className="min-w-0 pt-3 pb-3">
-              <h1 className="text-xl font-semibold text-[#1A1917] truncate">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-ink-100 truncate">
                 Reporte de Cuentas Corrientes
               </h1>
-              <p className="text-[11px] text-[#9B978F] truncate">
+              <p className="text-[11px] text-slate-500 dark:text-ink-400 truncate">
                 {formatFecha(data.createdAt)} · {data.fuente} · {data.user?.name || data.user?.email}
               </p>
             </div>
@@ -118,8 +118,8 @@ function TabButton({ active, onClick, children, icon }) {
       className={
         "relative px-5 py-3 text-sm font-semibold transition flex items-center gap-2 -mb-px border-b-2 " +
         (active
-          ? "border-[#2563EB] text-[#2563EB]"
-          : "border-transparent text-[#6B7280] hover:text-[#1A1917] hover:bg-[#F8F9FA]")
+          ? "border-brand-600 dark:border-brand-400 text-brand-600 dark:text-brand-300"
+          : "border-transparent text-slate-500 dark:text-ink-400 hover:text-slate-900 dark:hover:text-ink-100 hover:bg-slate-50 dark:hover:bg-ink-800")
       }
     >
       {icon === "sheet" && (
@@ -157,25 +157,25 @@ function DashboardView({ data }) {
         <Kpi label="PROMEDIO / CLIENTE" value={formatARS(promedio)} color="#385723" />
       </div>
 
-      <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
-        <div className="px-5 py-3 border-b border-black/[0.06] bg-[#DDEBF7]">
-          <h3 className="font-semibold text-[#1F4E78]">TOP 10 DEUDORES</h3>
+      <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-200 dark:border-ink-700 bg-slate-100 dark:bg-ink-800">
+          <h3 className="font-semibold text-[#1F4E78] dark:text-brand-300">TOP 10 DEUDORES</h3>
         </div>
         <div className="p-5 space-y-2">
           {top10.map((c) => {
             const pct = ((c.saldoTotal || 0) / maxSaldo) * 100;
             return (
               <div key={c.numero} className="flex items-center gap-3">
-                <div className="w-48 text-sm text-[#1A1917] truncate" title={c.nombre}>
+                <div className="w-48 text-sm text-slate-900 dark:text-ink-100 truncate" title={c.nombre}>
                   {c.nombre}
                 </div>
-                <div className="flex-1 bg-[#F2F1EE] rounded h-6 relative overflow-hidden">
+                <div className="flex-1 bg-slate-50 dark:bg-ink-950 rounded h-6 relative overflow-hidden">
                   <div
                     className="bg-[#2E75B6] h-full rounded transition-all"
                     style={{ width: pct + "%" }}
                   />
                 </div>
-                <div className="w-32 text-right text-sm font-medium text-[#1A1917] tabular-nums">
+                <div className="w-32 text-right text-sm font-medium text-slate-900 dark:text-ink-100 tabular-nums">
                   {formatARS(c.saldoTotal)}
                 </div>
               </div>
@@ -184,28 +184,28 @@ function DashboardView({ data }) {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-black/[0.06] overflow-hidden">
-        <div className="px-5 py-3 border-b border-black/[0.06] bg-[#DDEBF7]">
-          <h3 className="font-semibold text-[#1F4E78]">DEUDA POR VENDEDOR</h3>
+      <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-200 dark:border-ink-700 bg-slate-100 dark:bg-ink-800">
+          <h3 className="font-semibold text-[#1F4E78] dark:text-brand-300">DEUDA POR VENDEDOR</h3>
         </div>
         <div className="p-5 space-y-2">
           {data.porVendedor.map((v) => {
             const pct = (v.saldo / totalVendedor) * 100;
             return (
               <div key={v.vendedor} className="flex items-center gap-3">
-                <div className="w-64 text-sm text-[#1A1917] truncate" title={v.vendedor}>
+                <div className="w-64 text-sm text-slate-900 dark:text-ink-100 truncate" title={v.vendedor}>
                   {v.vendedor}
                 </div>
-                <div className="flex-1 bg-[#F2F1EE] rounded h-5 relative overflow-hidden">
+                <div className="flex-1 bg-slate-50 dark:bg-ink-950 rounded h-5 relative overflow-hidden">
                   <div
                     className="bg-[#385723] h-full rounded transition-all"
                     style={{ width: pct + "%" }}
                   />
                 </div>
-                <div className="w-12 text-right text-xs text-[#9B978F] tabular-nums">
+                <div className="w-12 text-right text-xs text-slate-500 dark:text-ink-400 tabular-nums">
                   {pct.toFixed(1)}%
                 </div>
-                <div className="w-32 text-right text-sm font-medium text-[#1A1917] tabular-nums">
+                <div className="w-32 text-right text-sm font-medium text-slate-900 dark:text-ink-100 tabular-nums">
                   {formatARS(v.saldo)}
                 </div>
               </div>
@@ -219,8 +219,8 @@ function DashboardView({ data }) {
 
 function Kpi({ label, value, color }) {
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] p-4">
-      <p className="text-[10px] font-medium tracking-widest uppercase text-[#9B978F]">
+    <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-4">
+      <p className="text-[10px] font-medium tracking-widest uppercase text-slate-500 dark:text-ink-400">
         {label}
       </p>
       <p className="text-2xl font-bold mt-1" style={{ color }}>

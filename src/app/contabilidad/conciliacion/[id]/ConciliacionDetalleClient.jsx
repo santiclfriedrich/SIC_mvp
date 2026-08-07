@@ -32,17 +32,17 @@ export function ConciliacionDetalleClient({ data }) {
 
   return (
     <main
-      className="flex flex-col bg-[#F2F1EE] overflow-hidden"
-      style={{ height: "calc(100vh - 57px)", overscrollBehavior: "contain" }}
+      className="flex h-full flex-col overflow-hidden bg-slate-50 dark:bg-ink-950"
+      style={{ overscrollBehavior: "contain" }}
     >
-      <div className="bg-white border-b border-black/[0.06] flex-shrink-0">
+      <div className="bg-white dark:bg-ink-900 border-b border-slate-200 dark:border-ink-700 flex-shrink-0">
         <div className="px-6 flex items-end justify-between gap-6 flex-wrap">
           <div className="flex items-end gap-8 min-w-0 flex-wrap">
             <div className="min-w-0 pt-3 pb-3">
-              <h1 className="text-xl font-semibold text-[#1A1917] truncate">
+              <h1 className="text-xl font-semibold text-slate-900 dark:text-ink-100 truncate">
                 Conciliación GBP ↔ MercadoPago
               </h1>
-              <p className="text-[11px] text-[#9B978F] truncate">
+              <p className="text-[11px] text-slate-500 dark:text-ink-400 truncate">
                 {formatFecha(data.createdAt)} · {data.fuente} · {data.user?.name || data.user?.email}
               </p>
             </div>
@@ -96,7 +96,7 @@ export function ConciliacionDetalleClient({ data }) {
                 <Kpi label="GBP SIN N° OP" value={data.resumen?.gbpSinOp ?? "—"} color="#6B7280" />
                 <Kpi label="OPERACIONES MP" value={data.resumen?.mpOps ?? "—"} color="#065F46" />
               </div>
-              <p className="text-sm text-[#9B978F]">
+              <p className="text-sm text-slate-500 dark:text-ink-400">
                 El detalle completo (cada operación) está en la planilla. Usá la solapa{" "}
                 <strong>Planilla</strong> o abrí el Sheet en otra pestaña.
               </p>
@@ -116,7 +116,7 @@ function TabButton({ active, onClick, children }) {
         "relative px-5 py-3 text-sm font-semibold transition flex items-center gap-2 -mb-px border-b-2 " +
         (active
           ? "border-[#059669] text-[#059669]"
-          : "border-transparent text-[#6B7280] hover:text-[#1A1917] hover:bg-[#F8F9FA]")
+          : "border-transparent text-slate-500 dark:text-ink-400 hover:text-slate-900 dark:hover:text-ink-100 hover:bg-slate-50 dark:hover:bg-ink-800")
       }
     >
       {children}
@@ -126,10 +126,10 @@ function TabButton({ active, onClick, children }) {
 
 function Kpi({ label, value, sub, color }) {
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] p-4">
-      <p className="text-[10px] font-medium tracking-widest uppercase text-[#9B978F]">{label}</p>
+    <div className="bg-white dark:bg-ink-900 rounded-xl border border-slate-200 dark:border-ink-700 p-4">
+      <p className="text-[10px] font-medium tracking-widest uppercase text-slate-500 dark:text-ink-400">{label}</p>
       <p className="text-2xl font-bold mt-1" style={{ color }}>{value}</p>
-      {sub && <p className="text-xs text-[#9B978F] mt-0.5">{sub}</p>}
+      {sub && <p className="text-xs text-slate-500 dark:text-ink-400 mt-0.5">{sub}</p>}
     </div>
   );
 }
