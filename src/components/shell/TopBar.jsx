@@ -3,11 +3,14 @@ import { Menu, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { BrandLogo } from "./BrandLogo";
 import { ThemeToggle } from "./ThemeToggle";
+import { SyncControl } from "./SyncControl";
+
+const SYNC_ROLES = ["ADMIN", "CORPO", "TIENDAS", "CONTABILIDAD"];
 
 export function TopBar({ onMenu, collapsed, onToggleCollapse }) {
   const { data: session } = useSession();
-  const iconBtn =
-    "rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white";
+  const role = session?.user?.role;
+  const iconBtn = "rounded-lg p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white";
 
   return (
     <header className="z-40 flex h-14 shrink-0 items-center border-b border-slate-800 bg-slate-900 dark:border-ink-700 dark:bg-ink-900">
@@ -43,14 +46,11 @@ export function TopBar({ onMenu, collapsed, onToggleCollapse }) {
       </div>
 
       <div className="flex flex-1 items-center justify-end gap-3 px-3 sm:px-4">
+        {SYNC_ROLES.includes(role) && <SyncControl />}
         {session?.user && (
           <div className="hidden text-right leading-tight sm:block">
-            <p className="text-[10px] font-medium uppercase tracking-widest text-white/40">
-              {session.user.role}
-            </p>
-            <p className="text-sm font-medium text-white/80">
-              {session.user.name || session.user.email}
-            </p>
+            <p className="text-[10px] font-medium uppercase tracking-widest text-white/40">{role}</p>
+            <p className="text-sm font-medium text-white/80">{session.user.name || session.user.email}</p>
           </div>
         )}
         <ThemeToggle />
