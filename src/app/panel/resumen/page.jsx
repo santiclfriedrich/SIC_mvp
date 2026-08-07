@@ -7,6 +7,7 @@ import { PanelPage } from "@/components/panel/PanelPage";
 import { Card } from "@/components/panel/Card";
 import { StatTile } from "@/components/panel/StatTile";
 import { HBars } from "@/components/panel/HBars";
+import { ValuationControls } from "@/components/panel/ValuationControls";
 import { compact, fmtDec, fmtMoney, fmtQty } from "@/lib/panel/format";
 
 function EmptyNoData() {
@@ -14,7 +15,7 @@ function EmptyNoData() {
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white/60 p-10 text-center dark:border-ink-700 dark:bg-ink-900/40">
       <h2 className="text-lg font-semibold text-slate-900 dark:text-ink-100">Todavía no hay datos sincronizados</h2>
       <p className="mt-1 text-sm text-slate-500 dark:text-ink-300">
-        La base se alimenta desde el sync del ERP. La primera sincronización tarda unos minutos.
+        La base se alimenta desde el sync del ERP. Tocá <b>“Sincronizar”</b> arriba a la derecha; la primera corrida tarda unos minutos.
       </p>
     </div>
   );
@@ -44,6 +45,7 @@ export default function ResumenPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     fetch("/api/panel/filters")
@@ -73,23 +75,29 @@ export default function ResumenPage() {
     return () => {
       cancel = true;
     };
-  }, [prli]);
+  }, [prli, refresh]);
+
+  const onCotizacion = async (n) => {
+    try {
+      await fetch("/api/panel/cotizacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: n }),
+      });
+      setRefresh((x) => x + 1);
+    } catch {}
+  };
 
   const esCosto = Number(prli) === 0;
 
   const actions = (
-    <select
-      value={prli}
-      onChange={(e) => setPrli(Number(e.target.value))}
-      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-900 transition-colors hover:border-slate-300 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-ink-700 dark:bg-ink-900 dark:text-ink-100 dark:hover:border-ink-600"
-    >
-      {priceLists.length === 0 && <option value={0}>Costo — 01-Lista de Costos</option>}
-      {priceLists.map((pl) => (
-        <option key={pl.prli_id} value={pl.prli_id}>
-          {pl.prli_desc}
-        </option>
-      ))}
-    </select>
+    <ValuationControls
+      prli={prli}
+      onPrli={setPrli}
+      priceLists={priceLists}
+      cotizacion={data?.cotizacion}
+      onCotizacion={onCotizacion}
+    />
   );
 
   let body;

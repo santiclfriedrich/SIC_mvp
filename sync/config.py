@@ -126,7 +126,7 @@ DEFAULT_COTIZACION = 1510.0
 # Base de datos: Supabase (Postgres) es la base única del panel — la
 # alimenta GitHub Actions cada 2 horas. Para forzar el SQLite local
 # (ej. pruebas sin tocar la nube) correr con DATABASE_URL="" vacía.
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "stock.db")
 
 # Cantidad de descargas de stock en paralelo (una por depósito visible)
